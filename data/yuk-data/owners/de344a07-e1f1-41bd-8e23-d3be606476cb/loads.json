@@ -1,0 +1,42 @@
+[
+  {
+    "id": "8f439eb6-5734-4cf4-b529-157208cd34ef",
+    "sana": "2026-11-06",
+    "holat": "qizil",
+    "kategoriya": {
+      "id": "e8299e38-3c62-426a-9ff8-d9d37eba92b7",
+      "nomi": "Shkaf"
+    },
+    "nomi": "leylaaa+divan",
+    "rang": {
+      "id": "ea2f818e-950e-4fde-b57a-30a7fd3af5ae",
+      "nomi": "."
+    },
+    "matras": {
+      "bor": false,
+      "turi": null
+    },
+    "izoh": "",
+    "manzil": {
+      "hudud": "",
+      "dom": "",
+      "padyez": "",
+      "etaj": ""
+    },
+    "astatka": 0,
+    "tel1": "",
+    "tel2": "",
+    "zborshik": {
+      "id": "85ab5094-03d3-43da-ae08-2ffa1c9a45c5",
+      "ism": "muxammad",
+      "telefon": "9849829"
+    },
+    "labo": null,
+    "filial": null,
+    "yaratdi": "Shoxjahon Hamroqulov",
+    "tolovlar": [],
+    "tolandi": false,
+    "tartib": 1,
+    "createdAt": "2026-11-06T05:17:59.445Z"
+  }
+]

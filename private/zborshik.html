@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mening zakazlarim — Yuk Manifest</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="yuk-style.css" />
+<link rel="stylesheet" href="zborshik.css" />
+</head>
+<body>
+<header class="zb-top">
+  <div>
+    <div class="zb-hello" id="zbName">—</div>
+    <div class="zb-sub">Sizga biriktirilgan zakazlar</div>
+  </div>
+  <div class="zb-actions">
+    <button class="ghost-btn small-btn" id="refreshBtn">↻</button>
+    <button class="ghost-btn small-btn" id="logoutBtn">Chiqish</button>
+  </div>
+</header>
+<main id="zbList" class="zb-list"></main>
+<div id="toast" class="toast hidden"></div>
+<script src="zborshik.js"></script>
+</body>
+</html>

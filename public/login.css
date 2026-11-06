@@ -1,0 +1,17 @@
+.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.login-card { width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 28px 26px; }
+.login-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.login-brand .brand-mark { font-size: 26px; color: var(--accent); }
+.login-brand h1 { margin: 0; font-size: 20px; }
+.login-brand p { margin: 2px 0 0; font-size: 12px; color: var(--text-dim); }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--bg); padding: 4px; border-radius: 10px; margin-bottom: 20px; }
+.tab { background: transparent; border: 0; color: var(--text-dim); font: inherit; font-weight: 600; font-size: 13px; padding: 10px 8px; border-radius: 8px; cursor: pointer; }
+.tab.active { background: var(--panel-2); color: var(--text); }
+.login-card label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 14px; }
+.login-card input { width: 100%; margin-top: 6px; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font: inherit; font-size: 15px; }
+.login-card input:focus { outline: none; border-color: var(--accent); }
+.login-card .primary-btn { width: 100%; padding: 13px; font-size: 14px; }
+.login-note { font-size: 12px; color: var(--text-dim); line-height: 1.55; margin: 0 0 16px; }
+.login-error { color: var(--red); font-size: 13px; min-height: 18px; margin: 0 0 12px; }
+#googleBtn { display: flex; justify-content: center; min-height: 44px; }
+.pane.hidden { display: none; }

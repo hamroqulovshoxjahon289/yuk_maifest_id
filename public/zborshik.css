@@ -1,0 +1,22 @@
+body { padding-bottom: 40px; }
+.zb-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 5; }
+.zb-hello { font-size: 18px; font-weight: 800; }
+.zb-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+.zb-actions { display: flex; gap: 8px; }
+.zb-list { max-width: 720px; margin: 0 auto; padding: 16px 14px; }
+.zb-day { margin: 22px 0 10px; font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); }
+.zb-day.today { color: var(--green); }
+.zb-card { background: var(--panel); border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+.zb-card.qizil { border-left-color: var(--red); }
+.zb-card.sariq { border-left-color: var(--yellow); }
+.zb-card.yashil { border-left-color: var(--green); }
+.zb-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+.zb-cat { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; }
+.zb-row { display: flex; justify-content: space-between; gap: 14px; padding: 8px 0; border-top: 1px dashed var(--border); font-size: 14px; }
+.zb-row .k { color: var(--text-dim); flex: 0 0 auto; }
+.zb-row .v { text-align: right; word-break: break-word; }
+.zb-row .v.mono { font-family: 'JetBrains Mono', monospace; }
+.zb-row a { color: var(--accent); text-decoration: none; font-weight: 700; }
+.zb-pill { display: inline-flex; align-items: center; gap: 6px; }
+.zb-empty { text-align: center; color: var(--text-dim); padding: 60px 20px; line-height: 1.6; }
+details.zb-old summary { cursor: pointer; color: var(--text-dim); font-size: 13px; margin: 26px 0 6px; }

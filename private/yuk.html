@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <!-- Google Analytics — tashrif buyuruvchilar statistikasi uchun.
+         G-XXXXXXXXXX o'rniga o'zingizning haqiqiy Measurement ID'ingizni yozing
+         (analytics.google.com dan olasiz, "G-" bilan boshlanadi). -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag("js", new Date());
+        gtag("config", "G-XXXXXXXXXX");
+    </script>
+
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Yuk Manifest — jo'natish jadvali</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="yuk-style.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">◈</span>
+    <div class="brand-text">
+      <h1>Yuk Manifest</h1>
+      <p>jo'natish jadvali</p>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <input type="text" id="searchInput" placeholder="🔍 Qidirish: mijoz, manzil, telefon, zborshik, labo..." />
+  </div>
+
+  <div class="week-nav">
+    <button id="prevWeek" class="nav-btn" title="1 kun orqaga">‹</button>
+    <div class="week-label" id="weekLabel">—</div>
+    <button id="nextWeek" class="nav-btn" title="1 kun oldinga">›</button>
+    <button id="todayBtn" class="today-btn">Bugun</button>
+  </div>
+
+  <div class="topbar-actions">
+    <button id="settingsBtn" class="ghost-btn" style="display:none" title="Amal kodi va o'chirish kodini o'rnatish">⚙️ Sozlamalar</button>
+    <button id="teamBtn" class="ghost-btn">👥 Jamoa</button>
+    <a id="excelExportBtn" class="ghost-btn" href="/api/export/excel">⬇️ Excel</a>
+    <button id="reportBtn" class="ghost-btn">📊 Hisobot</button>
+    <button id="addLoadTopBtn" class="primary-btn">+ Yuk qo'shish</button>
+    <div class="user-chip"><span id="userName">—</span><button id="logoutBtn" class="ghost-btn small-btn">Chiqish</button></div>
+  </div>
+</header>
+
+<main id="board" class="board">
+  <!-- kun ustunlari JS orqali chiziladi -->
+</main>
+
+<!-- ============ YUK QO'SHISH / TAHRIRLASH MODAL ============ -->
+<div id="formModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="formModalTitle">Yangi yuk</h2>
+      <button class="icon-btn close-modal">✕</button>
+    </div>
+
+    <form id="loadForm" class="modal-body">
+      <input type="hidden" id="loadId" />
+
+      <div class="section-label">Mahsulot</div>
+      <div class="field-row three">
+        <label>Kategoriya
+          <select id="f_kategoriya" required></select>
+        </label>
+        <label>Nomi (xohlagan nom)
+          <input type="text" id="f_nomi" placeholder="masalan: Malika, Diyor..." required />
+        </label>
+        <label>Rang
+          <select id="f_rang" required></select>
+        </label>
+      </div>
+
+      <div class="field-row" id="matrasRow" style="display:none">
+        <label class="checkbox-label">
+          <input type="checkbox" id="f_matras_bor" />
+          Matras qo'shilsinmi?
+        </label>
+        <label id="matrasTuriWrap" style="display:none">Matras o'lchami
+          <select id="f_matras_turi">
+            <option value="Pol artaped">Pol artaped</option>
+            <option value="Artaped">Artaped</option>
+            <option value="Super artaped">Super artaped</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="field-row">
+        <label>Izoh (ixtiyoriy)
+          <input type="text" id="f_izoh" placeholder="masalan: mijoz maxsus talabi..." />
+        </label>
+      </div>
+
+      <div class="field-row">
+        <label class="narrow">Jo'natish sanasi
+          <input type="date" id="f_sana" required />
+        </label>
+        <label class="narrow">Holat
+          <select id="f_holat">
+            <option value="qizil">🔴 Hali tayyor emas</option>
+            <option value="sariq">🟡 Yuklanmoqda</option>
+            <option value="yashil">🟢 Yuborildi</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="section-label">Manzil</div>
+      <div class="field-row">
+        <label>Hudud / mahalla / ko'cha
+          <input type="text" id="f_hudud" placeholder="masalan: Chilonzor, 15-kvartal" />
+        </label>
+      </div>
+      <div class="field-row three">
+        <label>Dom
+          <input type="text" id="f_dom" placeholder="12" />
+        </label>
+        <label>Padyez
+          <input type="text" id="f_padyez" placeholder="3" />
+        </label>
+        <label>Etaj
+          <input type="text" id="f_etaj" placeholder="5" />
+        </label>
+      </div>
+
+      <div class="section-label">To'lov</div>
+      <div class="field-row">
+        <label>Astatka / qoldiq (so'm)
+          <input type="number" id="f_astatka" placeholder="1200000" min="0" />
+        </label>
+      </div>
+
+      <div class="section-label">Mijoz telefonlari</div>
+      <div class="field-row">
+        <label>1-nomer
+          <input type="tel" id="f_tel1" placeholder="+998 90 123 45 67" />
+        </label>
+        <label>2-nomer
+          <input type="tel" id="f_tel2" placeholder="+998 91 234 56 78" />
+        </label>
+      </div>
+
+      <div class="section-label">Filial</div>
+      <div class="field-row">
+        <label>Qaysi filialga tegishli
+          <select id="f_filial"></select>
+        </label>
+      </div>
+
+      <div class="section-label">Yuklovchi jamoa</div>
+      <div class="field-row">
+        <label>Zborshik
+          <select id="f_zborshik"></select>
+        </label>
+        <label>Labo (mashina)
+          <select id="f_labo"></select>
+        </label>
+      </div>
+
+      <p class="form-error" id="formError"></p>
+
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn close-modal">Bekor qilish</button>
+        <button type="submit" class="primary-btn" id="formSubmitBtn">Saqlash</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ YUK TAFSILOTI MODAL ============ -->
+<div id="viewModal" class="modal-overlay hidden">
+  <div class="modal view-modal">
+    <div class="modal-head">
+      <h2 id="viewTitle">Yuk</h2>
+      <button class="icon-btn close-modal">✕</button>
+    </div>
+    <div class="modal-body" id="viewBody"></div>
+
+    <div class="quick-assign" id="quickAssignSection">
+      <div class="quick-assign-row">
+        <label style="width:100%;">🚦 Holatni almashtirish (kodsiz)</label>
+      </div>
+      <div class="quick-status-buttons">
+        <button class="status-quick-btn qizil" data-holat="qizil">🔴 Hali tayyor emas</button>
+        <button class="status-quick-btn sariq" data-holat="sariq">🟡 Yuklanmoqda</button>
+        <button class="status-quick-btn yashil" data-holat="yashil">🟢 Yuborildi</button>
+      </div>
+
+      <div class="quick-assign-row">
+        <label>🧰 Zborshikni almashtirish (kodsiz)
+          <select id="quickZborshik"></select>
+        </label>
+        <button class="ghost-btn small-btn" id="quickZborshikSave">Saqlash</button>
+      </div>
+      <div class="quick-assign-row">
+        <label>🚚 Laboni almashtirish (kodsiz)
+          <select id="quickLabo"></select>
+        </label>
+        <button class="ghost-btn small-btn" id="quickLaboSave">Saqlash</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="danger-btn" id="deleteLoadBtn">O'chirish</button>
+      <button class="ghost-btn" id="printLoadBtn">🖨️ Chop etish</button>
+      <button class="ghost-btn" id="editLoadBtn">Tahrirlash</button>
+    </div>
+
+    <div class="quick-assign" id="paymentSection">
+      <div class="quick-assign-row">
+        <label style="width:100%;">💰 To'lov (kassa)</label>
+      </div>
+      <div id="paymentHistory" class="payment-history"></div>
+      <div class="quick-assign-row" id="paymentInputRow">
+        <input type="number" id="paymentAmountInput" placeholder="Summani kiriting (so'm)" min="1" />
+        <button class="pay-btn" id="payLoadBtn">💰 To'lov qo'shish</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CHOP ETISH UCHUN ALOHIDA KO'RINISH ============ -->
+<!-- Bu blok odatda yashiringan, faqat Ctrl+P bosilganda ko'rinadi -->
+<div id="printArea" class="print-only"></div>
+
+<!-- ============ JAMOA (ZBORSHIK / LABO) MODAL ============ -->
+<div id="teamModal" class="modal-overlay hidden">
+  <div class="modal team-modal">
+    <div class="modal-head">
+      <h2>👥 Jamoa — Zborshik va Labolar</h2>
+      <button class="icon-btn close-modal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="section-label">🎨 Ranglar (kategoriya bo'yicha)</div>
+      <select id="teamColorCatSelect" style="margin-bottom:8px;"></select>
+      <div id="teamColorList" class="team-list"></div>
+      <button class="ghost-btn" id="teamAddColorBtn">➕ Yangi rang qo'shish</button>
+
+      <div class="section-label" style="margin-top:20px">🏢 Filiallar</div>
+      <div id="teamFilialList" class="team-list"></div>
+      <button class="ghost-btn" id="teamAddFilialBtn">➕ Yangi filial qo'shish</button>
+
+      <div id="staffSection" class="hidden">
+        <div class="section-label" style="margin-top:20px">🔑 Xodimlar (login-parol bilan kiradiganlar)</div>
+        <div id="teamStaffList" class="team-list"></div>
+        <button class="ghost-btn" id="teamAddStaffBtn">➕ Yangi xodim (login-parol)</button>
+      </div>
+
+      <div class="section-label" style="margin-top:20px">🧰 Zborshiklar</div>
+      <div id="teamZborshikList" class="team-list"></div>
+      <button class="ghost-btn" id="teamAddZborshikBtn">➕ Yangi zborshik qo'shish</button>
+
+      <div class="section-label" style="margin-top:20px">🚚 Labolar</div>
+      <div id="teamLaboList" class="team-list"></div>
+      <button class="ghost-btn" id="teamAddLaboBtn">➕ Yangi labo qo'shish</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ XODIM (ISHCHI) MODAL ============ -->
+<div id="staffModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="staffModalTitle">Yangi xodim</h2>
+      <button class="icon-btn close-modal">✕</button>
+    </div>
+    <form id="staffForm" class="modal-body">
+      <div class="field-row">
+        <label>Ismi
+          <input type="text" id="s_name" placeholder="masalan: Aziz" required />
+        </label>
+      </div>
+      <div class="field-row">
+        <label>Login
+          <input type="text" id="s_login" placeholder="aziz01" autocomplete="off" autocapitalize="none" required />
+        </label>
+        <label>Parol
+          <input type="text" id="s_password" placeholder="kamida 6 belgi" autocomplete="off" />
+        </label>
+      </div>
+      <div class="section-label">Ruxsatlar</div>
+      <div class="perm-list">
+        <label class="checkbox-label"><input type="checkbox" id="s_perm_add" checked /> Yuk qo'shish</label>
+        <label class="checkbox-label"><input type="checkbox" id="s_perm_edit" checked /> Yukni tahrirlash (holat/zborshik/labo almashtirish ham)</label>
+        <label class="checkbox-label"><input type="checkbox" id="s_perm_pay" /> Pul qabul qilish</label>
+        <label class="checkbox-label"><input type="checkbox" id="s_perm_delete" /> Yukni o'chirish</label>
+        <label class="checkbox-label"><input type="checkbox" id="s_perm_reorder" /> Zakazlar tartibini (o'rnini) almashtirish</label>
+        <label class="checkbox-label"><input type="checkbox" id="s_perm_team" /> Jamoani boshqarish (zborshik, labo, filial, rang qo'shish/o'chirish)</label>
+      </div>
+      <label class="checkbox-label" id="s_active_row" style="margin-top:12px;display:none"><input type="checkbox" id="s_active" checked /> Kirishi yoqilgan</label>
+      <p class="muted-note">Zakazlarni ko'rish har bir xodimga doim ochiq. Qolgan amallar faqat yuqoridagi ruxsatlar berilsa ishlaydi.</p>
+      <p class="form-error" id="staffError"></p>
+      <div class="modal-actions">
+        <button type="button" class="danger-btn" id="staffDeleteBtn" style="display:none">O'chirish</button>
+        <button type="button" class="ghost-btn close-modal">Bekor qilish</button>
+        <button type="submit" class="primary-btn">Saqlash</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ ZBORSHIK MODAL (yaratish / login-parol) ============ -->
+<div id="zbModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="zbModalTitle">Yangi zborshik</h2>
+      <button class="icon-btn close-modal">✕</button>
+    </div>
+    <form id="zbForm" class="modal-body">
+      <div class="field-row" id="zb_person_row">
+        <label>Ismi
+          <input type="text" id="zb_ism" placeholder="masalan: Rustam" />
+        </label>
+        <label>Telefon
+          <input type="tel" id="zb_tel" placeholder="+998 90 123 45 67" />
+        </label>
+      </div>
+      <div class="section-label">Kirish uchun login-parol</div>
+      <div class="field-row">
+        <label>Login
+          <input type="text" id="zb_login" placeholder="rustam01" autocomplete="off" autocapitalize="none" />
+        </label>
+        <label>Parol
+          <input type="text" id="zb_password" placeholder="kamida 6 belgi" autocomplete="off" />
+        </label>
+      </div>
+      <label class="checkbox-label" id="zb_active_row" style="margin-top:12px;display:none"><input type="checkbox" id="zb_active" checked /> Kirishi yoqilgan</label>
+      <p class="muted-note" id="zbHint">Login-parol bersangiz, zborshik shu bilan kirib faqat o'ziga biriktirilgan zakazlarni ko'radi. Xohlamasangiz bo'sh qoldiring.</p>
+      <p class="form-error" id="zbError"></p>
+      <div class="modal-actions">
+        <button type="button" class="danger-btn" id="zbRemoveLoginBtn" style="display:none">Loginni o'chirish</button>
+        <button type="button" class="ghost-btn close-modal">Bekor qilish</button>
+        <button type="submit" class="primary-btn">Saqlash</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ HISOBOT MODAL ============ -->
+<div id="reportModal" class="modal-overlay hidden">
+  <div class="modal report-modal">
+    <div class="modal-head">
+      <h2>📊 Hisobot</h2>
+      <button class="icon-btn close-modal">✕</button>
+    </div>
+    <div class="modal-body" id="reportBody"></div>
+  </div>
+</div>
+
+<!-- ============ KOD KIRITISH OYNASI (yashirin, nuqtali) ============ -->
+<div id="secretModal" class="modal-overlay hidden" style="z-index:1000">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-head"><h2 id="secretTitle">🔐 Kodni kiriting</h2></div>
+    <form id="secretForm" class="modal-body" autocomplete="off">
+      <p class="muted-note" id="secretHint" style="display:none"></p>
+      <div class="field-row">
+        <label>Kod
+          <input type="password" id="secretInput" class="code-input" inputmode="numeric" maxlength="4" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="••••" />
+        </label>
+      </div>
+      <p class="form-error" id="secretError"></p>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="secretCancel">Bekor qilish</button>
+        <button type="submit" class="primary-btn">OK</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ TARTIB RAQAMINI ALMASHTIRISH (kartochka tepasidagi raqamni bosganda) ============ -->
+<div id="moveModal" class="modal-overlay hidden" style="z-index:900">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-head">
+      <h2>🔢 Tartib raqamini almashtirish</h2>
+      <button class="icon-btn close-modal">✕</button>
+    </div>
+    <form id="moveForm" class="modal-body" autocomplete="off">
+      <p class="muted-note" id="moveInfo"></p>
+      <div class="field-row">
+        <label>Zakazni nechanchi o'ringa qo'yamiz?
+          <input type="number" id="moveInput" min="1" inputmode="numeric" />
+        </label>
+      </div>
+      <div class="quick-assign-row">
+        <button type="button" class="ghost-btn small-btn" id="moveUpBtn">⬆️ Raqamni kamaytirish</button>
+        <button type="button" class="ghost-btn small-btn" id="moveDownBtn">⬇️ Raqamni oshirish</button>
+      </div>
+      <p class="muted-note">Zakaz yangi raqamga o'tadi, qolganlari avtomatik siljiydi.</p>
+      <p class="form-error" id="moveError"></p>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn close-modal">Bekor qilish</button>
+        <button type="submit" class="primary-btn">Joylash</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ SOZLAMALAR (faqat egasi): kodlar ============ -->
+<div id="settingsModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head">
+      <h2>⚙️ Sozlamalar</h2>
+      <button class="icon-btn close-modal">✕</button>
+    </div>
+    <form id="settingsForm" class="modal-body" autocomplete="off">
+      <div class="section-label">🔐 Amal kodi (4 ta raqam) <span class="muted" id="actionCodeStatus"></span></div>
+      <p class="muted-note">Yuk qo'shish va tahrirlashda so'raladi. Xavfsizlik uchun Sozlamalarni ochishda ham shu kod so'raladi. Yozayotganda ko'rinmaydi.</p>
+      <div class="field-row">
+        <label>Yangi kod
+          <input type="password" id="set_action1" class="code-input" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••" />
+        </label>
+        <label>Takrorlang
+          <input type="password" id="set_action2" class="code-input" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••" />
+        </label>
+      </div>
+      <label class="checkbox-label" id="set_action_clear_row"><input type="checkbox" id="set_action_clear" /> Amal kodini olib tashlash</label>
+
+      <div class="section-label" style="margin-top:20px">💰 Pul qabul qilish kodi (4 ta raqam) <span class="muted" id="payCodeStatus"></span></div>
+      <p class="muted-note">"Pul qabul qilindi" tugmasi bosilib, summa kiritilgandan keyin so'raladi.</p>
+      <div class="field-row">
+        <label>Yangi kod
+          <input type="password" id="set_pay1" class="code-input" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••" />
+        </label>
+        <label>Takrorlang
+          <input type="password" id="set_pay2" class="code-input" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••" />
+        </label>
+      </div>
+      <label class="checkbox-label" id="set_pay_clear_row"><input type="checkbox" id="set_pay_clear" /> Pul qabul qilish kodini olib tashlash</label>
+
+      <div class="section-label" style="margin-top:20px">🗑 O'chirish kodi (4 ta raqam) <span class="muted" id="deleteCodeStatus"></span></div>
+      <p class="muted-note">Yukni, zborshik, labo, filial va xodimni o'chirishda so'raladi.</p>
+      <div class="field-row">
+        <label>Yangi kod
+          <input type="password" id="set_delete1" class="code-input" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••" />
+        </label>
+        <label>Takrorlang
+          <input type="password" id="set_delete2" class="code-input" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••" />
+        </label>
+      </div>
+      <label class="checkbox-label" id="set_delete_clear_row"><input type="checkbox" id="set_delete_clear" /> O'chirish kodini olib tashlash</label>
+
+      <p class="muted-note">Kod qo'ymasangiz, o'sha amallar kodsiz ishlayveradi. Kodni xohlagan payt shu yerdan o'zgartirasiz.</p>
+      <p class="form-error" id="settingsError"></p>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn close-modal">Bekor qilish</button>
+        <button type="submit" class="primary-btn">Saqlash</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="yuk-app.js"></script>
+</body>
+</html>

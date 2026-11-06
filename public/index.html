@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Yuk Manifest — kirish</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="yuk-style.css" />
+<link rel="stylesheet" href="login.css" />
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="brand-mark">◈</span>
+      <div><h1>Yuk Manifest</h1><p>jo'natish jadvali</p></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="login">Login va parol bilan</button>
+      <button class="tab" data-tab="new">Yangi akaunt yaratish</button>
+    </div>
+
+    <form id="loginPane" class="pane">
+      <p class="login-note">Egangiz bergan login va parol bilan kiring (ishchi yoki zborshik).</p>
+      <label>Login
+        <input type="text" id="login" autocomplete="username" autocapitalize="none" autocorrect="off" required />
+      </label>
+      <label>Parol
+        <input type="password" id="password" autocomplete="current-password" required />
+      </label>
+      <p class="login-error" id="loginError"></p>
+      <button type="submit" class="primary-btn" id="loginBtn">Kirish</button>
+    </form>
+
+    <div id="newPane" class="pane hidden">
+      <p class="login-note">Google orqali ro'yxatdan o'ting. Sizga alohida jadval ochiladi, ishchi va zborshiklaringizga login-parolni o'zingiz berasiz.<br>Akauntingiz bor bo'lsa, shu tugma orqali yana kirishingiz mumkin.</p>
+      <div id="googleBtn"></div>
+      <p class="login-error" id="googleError" style="margin-top:14px"></p>
+    </div>
+  </div>
+</div>
+<script src="login.js"></script>
+</body>
+</html>
