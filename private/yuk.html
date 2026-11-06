@@ -44,6 +44,8 @@
 
   <div class="topbar-actions">
     <button id="settingsBtn" class="ghost-btn" style="display:none" title="Amal kodi va o'chirish kodini o'rnatish">⚙️ Sozlamalar</button>
+    <button id="bellBtn" class="ghost-btn bell-btn" style="display:none" title="Bildirishnomalar">🔔<span id="bellBadge" class="bell-badge hidden">0</span></button>
+    <button id="skladBtn" class="ghost-btn">🏬 Sklad</button>
     <button id="teamBtn" class="ghost-btn">👥 Jamoa</button>
     <a id="excelExportBtn" class="ghost-btn" href="/api/export/excel">⬇️ Excel</a>
     <button id="reportBtn" class="ghost-btn">📊 Hisobot</button>
@@ -72,8 +74,8 @@
         <label>Kategoriya
           <select id="f_kategoriya" required></select>
         </label>
-        <label>Nomi (xohlagan nom)
-          <input type="text" id="f_nomi" placeholder="masalan: Malika, Diyor..." required />
+        <label>Nomi (bo'sh qoldirsangiz, sklad mahsulotlaridan olinadi)
+          <input type="text" id="f_nomi" placeholder="masalan: Malika, Diyor..." />
         </label>
       </div>
 
@@ -89,6 +91,25 @@
             <option value="Super artaped">Super artaped</option>
           </select>
         </label>
+      </div>
+
+      <div class="section-label">🏬 Sklad mahsulotlari</div>
+      <div class="sk-picker">
+        <div class="sk-tabs" id="skPickTabs"></div>
+        <div class="field-row three">
+          <label>Kategoriya
+            <select id="skPickCat"></select>
+          </label>
+          <label>Model
+            <select id="skPickModel"></select>
+          </label>
+          <label>Soni
+            <input type="number" id="skPickQty" min="1" step="1" value="1" />
+          </label>
+        </div>
+        <button type="button" class="ghost-btn small-btn" id="skPickAdd">＋ Qo'shish</button>
+        <div id="skPickedList" class="sk-picked"></div>
+        <p class="muted-note" id="skPickHint">Yuk "🟢 Yuborildi" bo'lganda tanlangan mahsulotlar skladdan avtomatik ayiriladi.</p>
       </div>
 
       <div class="field-row">
@@ -377,6 +398,49 @@
         <button type="submit" class="primary-btn">Saqlash</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- ============ BILDIRISHNOMALAR (xodimlar uchun) ============ -->
+<div id="notifModal" class="modal-overlay hidden">
+  <div class="modal report-modal">
+    <div class="modal-head">
+      <h2>🔔 Bildirishnomalar</h2>
+      <button class="icon-btn close-modal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:10px"><button class="ghost-btn small-btn" id="notifReadAll">✓ Hammasini o'qilgan qilish</button></div>
+      <div id="notifList"></div>
+      <p class="muted-note">Egasi yangi zakaz qo'shganda shu yerda va ekranda xabar chiqadi. Zakazni bossangiz, o'sha kunga o'tib ochiladi.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SURATNI KATTA KO'RISH ============ -->
+<div id="imgModal" class="modal-overlay hidden" style="z-index:1100">
+  <div class="img-view">
+    <img id="imgModalImg" alt="" />
+    <div id="imgModalCap" class="img-cap"></div>
+    <button type="button" class="ghost-btn" id="imgModalClose">✕ Yopish</button>
+  </div>
+</div>
+<input type="file" id="skFile" accept="image/*" class="hidden" />
+
+<!-- ============ SKLAD MODAL ============ -->
+<div id="skModal" class="modal-overlay hidden">
+  <div class="modal report-modal">
+    <div class="modal-head">
+      <h2>🏬 Sklad</h2>
+      <button class="icon-btn close-modal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="sk-tabs" id="skTabs"></div>
+      <div id="skBody"></div>
+      <details class="sk-hist" id="skHist">
+        <summary>🕒 Oxirgi harakatlar (kirim / yuborildi)</summary>
+        <div id="skHistBody"></div>
+      </details>
+    </div>
   </div>
 </div>
 

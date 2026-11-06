@@ -51,3 +51,29 @@ Birinchi marta `LEGACY_OWNER_EMAIL` dagi Gmail bilan kirganingizda, `DATA_DIR/yu
 - 👥 Jamoa → Labolar bo'limida: **➕ Yangi labo qo'shish** (raqam, shafyor ismi, telefon, ixtiyoriy login-parol) yoki mavjud labo yonidagi **🔑 Login berish** tugmasi.
 - Shafyor oddiy kirish sahifasida (Login va parol bilan) kiradi va `/labo.html` sahifasida faqat o'z laboiga biriktirilgan zakazlarni ko'radi.
 - Login-parolni faqat egasi beradi/o'zgartiradi/to'xtatadi. To'xtatilsa yoki labo o'chirilsa, shafyor darhol tizimdan chiqib ketadi.
+
+## Sklad (matras / mebel / zapchast)
+- **🏬 Sklad** tugmasi: 3 yo'nalish (Matras, Mebel, Zapchast). Har birida xohlagancha kategoriya, har kategoriyada xohlagancha model.
+  - **＋ Kirim**: skladga mahsulot kelganda sonini yozasiz, qoldiq oshadi.
+  - **✎ Sanoq**: sanab chiqib, aniq qoldiqni qo'yish.
+  - **Oxirgi harakatlar**: kim, qachon, nechta kirim/chiqim qilgani.
+  - Kategoriya/model qo'shish va kirim: egasi yoki **Jamoani boshqarish** ruxsati bor xodim. O'chirishda o'chirish kodi so'raladi.
+- **Yuk qo'shish** oynasida «🏬 Sklad mahsulotlari»: yo'nalish → kategoriya → model → soni → **＋ Qo'shish**. Xohlagancha model qo'shish mumkin, nomini yozish shart emas (nom bo'sh qolsa, tanlangan modellardan olinadi).
+- **Yuborildi** bosilganda (yoki yuk shu holatda saqlanganda) tanlangan mahsulotlar skladdan **avtomatik ayiriladi**.
+  - Yuborildidan qaytarilsa yoki yuk o'chirilsa, mahsulot skladga qaytadi. Ikki marta ayirilmaydi.
+  - Skladda yetmasa, tizim ogohlantiradi; tasdiqlansangiz baribir yuboradi va qoldiq minusga tushadi (kam ekanini ko'rsatadi).
+- **📊 Hisobot** tepasida sklad hisoboti: har yo'nalish bo'yicha bugunga qancha kerak, qancha ketdi, qancha hali ketishi kerak, skladda nechta bor va yetmayotgani. Pastda oxirgi 7 kun + keyingi 2 kun uchun jadval.
+- Eski zakazlar va eski «Matras o'lchami» belgisi o'zgarmagan; sklad hisobi faqat yangi tanlash orqali kiritilganlarni hisoblaydi.
+- Ma'lumot `DATA_DIR/yuk-data/owners/<id>/sklad.json` da saqlanadi.
+
+### Sklad: surat va hisobot (yangilanish)
+- **Surat** faqat **Mebel** yo'nalishidagi modellarga, ixtiyoriy: Sklad → Mebel → model yonida «📷 Surat». Bitta model — bitta surat (almashtirish yoki olib tashlash mumkin). Surat avtomatik kichraytiriladi.
+- Suratni kim ko'radi: egasi/xodimlar (faqat **Sklad** oynasida) va **shu modelli yuk biriktirilgan zborshik** («📷 Suratni ko'rish» tugmasi). Zakaz kartochkasida, yuk formasida, labo/shafyor sahifasida va boshqa zborshiklarda surat ko'rinmaydi.
+- Suratlar `DATA_DIR/yuk-data/owners/<id>/sklad-img/` papkasida saqlanadi (Railway'da Volume ulangan bo'lishi kerak).
+- **Hisobot**: matras uchun «✅ Bugun ketgan matraslar» (model va soni) va «📋 Bugunga kerak matraslar» (model, soni, skladda nechta). Skladda yetmasa, tepada qizil chiziqli «🔴 Bugunga kerak matraslar — skladda yetmaydi» chiqadi.
+- «Yuborildi» bosilganda nima skladdan ayirilgani xabarda ko'rsatiladi. Mahsulot tanlanmagan eski yukda ogohlantirish chiqadi.
+
+### Matras kategoriyasiz + xodimlarga bildirishnoma (yangilanish)
+- **Matras** yo'nalishida kategoriya yo'q: Sklad → Matras → «➕ Yangi matras modeli». Yuk formasida ham Matras tanlansa, kategoriya so'ralmaydi, modelning o'zi tanlanadi. Mebel va Zapchastda kategoriya avvalgidek. Eski matras kategoriyalaridagi modellar saqlanib qoladi (ro'yxatda tekis ko'rinadi).
+- **Bildirishnoma**: egasi (admin) yangi zakaz qo'shganda barcha faol **xodimlarga** xabar boradi (zborshik va shafyorlarga bormaydi). Xodimda 🔔 tugmasi bor: o'qilmaganlar soni ko'rinadi, bossa ro'yxat ochiladi, xabarni bossa shu zakaz ochiladi. Sahifa ochiq bo'lsa, har 20 soniyada tekshiriladi va ekranda xabar chiqadi (brauzer ruxsat bersa — tizim xabari ham). Xodim zakaz qo'shsa, xabar yuborilmaydi.
+- Ma'lumot `DATA_DIR/yuk-data/owners/<id>/bildirishnomalar.json` da (oxirgi 200 ta).

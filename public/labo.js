@@ -32,6 +32,7 @@ function card(l) {
       ${(l.jamiTolangan || 0) > 0 && !l.tolandi ? row('Qoldiq', `${money(l.qoldiq)} so'm`, 'mono') : ''}
       ${l.filial?.nomi ? row('Filial', esc(l.filial.nomi)) : ''}
       ${l.zborshik ? row('Zborshik', `${esc(l.zborshik.ism || '')}<br>${tel(l.zborshik.telefon)}`) : ''}
+      ${(l.skladItems || []).length ? row('Mahsulotlar', l.skladItems.map((i) => `${esc(i.model)} × ${i.soni}`).join('<br>')) : ''}
       ${l.izoh ? row('Izoh', esc(l.izoh)) : ''}
     </div>`;
 }

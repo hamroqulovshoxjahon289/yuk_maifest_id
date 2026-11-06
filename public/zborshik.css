@@ -20,3 +20,10 @@ body { padding-bottom: 40px; }
 .zb-pill { display: inline-flex; align-items: center; gap: 6px; }
 .zb-empty { text-align: center; color: var(--text-dim); padding: 60px 20px; line-height: 1.6; }
 details.zb-old summary { cursor: pointer; color: var(--text-dim); font-size: 13px; margin: 26px 0 6px; }
+
+.zb-item { padding: 3px 0; text-align: right; }
+.zb-photo-btn { margin-left: 6px; background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.zb-img-modal { position: fixed; inset: 0; z-index: 1000; background: #0a0b0ef2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; }
+.zb-img-modal.hidden { display: none; }
+.zb-img-modal img { max-width: 96vw; max-height: 78vh; border-radius: 12px; background: #000; }
+.zb-img-cap { font-weight: 800; font-size: 16px; text-align: center; }

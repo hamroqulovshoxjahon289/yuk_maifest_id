@@ -1,0 +1,54 @@
+[
+  {
+    "id": "92cf12ea-688d-4210-a232-dc11aabf24e7",
+    "sana": "2026-11-06",
+    "holat": "qizil",
+    "kategoriya": {
+      "id": "d402bca3-8d00-4920-b7a2-4c47539f9f50",
+      "nomi": "Shkaf"
+    },
+    "nomi": "200x85 artaped",
+    "skladItems": [
+      {
+        "modelId": "f43a75c3-065a-4aa4-b864-e1e61313eb03",
+        "yonalish": "matras",
+        "kategoriya": "Matras",
+        "model": "200x85 artaped",
+        "soni": 4
+      }
+    ],
+    "skladCut": false,
+    "skladCutItems": [],
+    "matras": {
+      "bor": false,
+      "turi": null
+    },
+    "izoh": "akuratniy shavad",
+    "manzil": {
+      "hudud": "",
+      "dom": "",
+      "padyez": "",
+      "etaj": ""
+    },
+    "astatka": 3000000,
+    "tel1": "",
+    "tel2": "",
+    "zborshik": {
+      "id": "2c1e6302-ad8f-4465-a39d-b7e22947a307",
+      "ism": "geni",
+      "telefon": "9849829"
+    },
+    "labo": {
+      "id": "d23d2b2b-7416-49ba-b318-df92d55b098f",
+      "raqami": "312",
+      "haydovchi": "aziz",
+      "telefon": ""
+    },
+    "filial": null,
+    "yaratdi": "Shoxjahon Hamroqulov",
+    "tolovlar": [],
+    "tolandi": false,
+    "tartib": 1,
+    "createdAt": "2026-11-06T16:31:03.732Z"
+  }
+]

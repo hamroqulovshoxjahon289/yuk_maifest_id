@@ -15,6 +15,7 @@ function dayLabel(iso) {
   return `${DAYS[dt.getDay()]}, ${String(d).padStart(2, '0')}.${String(m).padStart(2, '0')}`;
 }
 
+let lastLoads = [];
 function card(l) {
   const addr = [l.manzil?.hudud, l.manzil?.dom ? `dom ${l.manzil.dom}` : '', l.manzil?.padyez ? `${l.manzil.padyez}-padyez` : '', l.manzil?.etaj ? `${l.manzil.etaj}-etaj` : ''].filter(Boolean).join(', ');
   const row = (k, v, cls = '') => `<div class="zb-row"><span class="k">${k}</span><span class="v ${cls}">${v}</span></div>`;
@@ -32,6 +33,7 @@ function card(l) {
       ${(l.jamiTolangan || 0) > 0 && !l.tolandi ? row('Qoldiq', `${money(l.qoldiq)} so'm`, 'mono') : ''}
       ${l.filial?.nomi ? row('Filial', esc(l.filial.nomi)) : ''}
       ${l.labo ? row('Labo', `${esc(l.labo.raqami)} · ${esc(l.labo.haydovchi || '')}<br>${tel(l.labo.telefon)}`) : ''}
+      ${(l.skladItems || []).length ? row('Mahsulotlar', l.skladItems.map((i) => `<div class="zb-item">${esc(i.model)} × ${i.soni}${i.rasmV ? ` <button type="button" class="zb-photo-btn" data-mid="${esc(i.modelId)}" data-v="${Number(i.rasmV)}">📷 Suratni ko'rish</button>` : ''}</div>`).join('')) : ''}
       ${l.izoh ? row('Izoh', esc(l.izoh)) : ''}
     </div>`;
 }
@@ -46,6 +48,7 @@ async function load() {
   const res = await fetch('/api/my-loads');
   if (res.status === 401) { location.href = '/'; return; }
   const loads = await res.json();
+  lastLoads = loads;
   const today = todayISO();
   const upcoming = loads.filter((l) => l.sana >= today);
   const past = loads.filter((l) => l.sana < today).sort((a, b) => b.sana.localeCompare(a.sana)).slice(0, 40);
@@ -61,6 +64,15 @@ async function load() {
   $('zbList').innerHTML = html;
 }
 
+$('zbList').addEventListener('click', (e) => {
+  const b = e.target.closest('.zb-photo-btn');
+  if (!b) return;
+  const item = lastLoads.flatMap((l) => l.skladItems || []).find((i) => i.modelId === b.dataset.mid);
+  $('zbImg').src = `/api/sklad/models/${encodeURIComponent(b.dataset.mid)}/rasm?v=${encodeURIComponent(b.dataset.v)}`;
+  $('zbImgCap').textContent = item ? item.model : '';
+  $('zbImgModal').classList.remove('hidden');
+});
+$('zbImgModal').addEventListener('click', () => { $('zbImgModal').classList.add('hidden'); $('zbImg').removeAttribute('src'); });
 $('refreshBtn').onclick = () => load();
 $('logoutBtn').onclick = async () => { await fetch('/api/auth/logout', { method: 'POST' }); location.href = '/'; };
 

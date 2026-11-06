@@ -1,25 +1,37 @@
 [
   {
-    "id": "28d033b4-204e-4b51-baec-7a0afa1f5eed",
+    "id": "f2c000da-27fd-4aba-82db-639aa254fe3d",
     "role": "owner",
     "name": "Shoxjahon Hamroqulov",
-    "email": "hamroqulovshoxjahon289@gmail.com",
-    "googleSub": "100676212351056207580",
+    "email": "hamroqulovshoxjahon43@gmail.com",
+    "googleSub": "109695344448480243119",
     "active": true,
     "tokenVersion": 0,
-    "createdAt": "2026-11-06T08:46:39.237Z",
-    "ownerId": "28d033b4-204e-4b51-baec-7a0afa1f5eed"
+    "createdAt": "2026-11-06T16:28:20.604Z",
+    "ownerId": "f2c000da-27fd-4aba-82db-639aa254fe3d"
   },
   {
-    "id": "345f92aa-86fc-45ad-a4b5-d00999cd9afb",
-    "role": "labo",
-    "ownerId": "28d033b4-204e-4b51-baec-7a0afa1f5eed",
-    "name": "aziz",
-    "laboId": "dd77b350-fc7f-4be7-b525-e014cc044743",
-    "login": "aziz",
-    "passHash": "scrypt$5f7e6b4a2dc1f3a474fc1a1fbe42dd8b$e2c298b778597ff22afe1852560e54f59fc402620ea0f253f3162a5abe58ed81c5a7ff10b76f110cc8a4ba8769ffeb7a1ef38e612951329ef2a6c835fb8d62ff",
+    "id": "21da98b2-aba3-4658-a6f3-50a9f0c458fd",
+    "role": "zborshik",
+    "ownerId": "f2c000da-27fd-4aba-82db-639aa254fe3d",
+    "name": "geni",
+    "zborshikId": "2c1e6302-ad8f-4465-a39d-b7e22947a307",
+    "login": "geni",
+    "passHash": "scrypt$bedd219418d364c7ddbf9fd91b8342a7$0db7aa9f1e213511851503cbb15a2ec30302989ea5ecca3575cd4f22ca91534e8baaf4f8d6661c146b2ceb71bf54ff3c27306df6389020e3e0f2f1b0d51f5484",
     "active": true,
     "tokenVersion": 0,
-    "createdAt": "2026-11-06T08:46:59.689Z"
+    "createdAt": "2026-11-06T16:32:24.572Z"
+  },
+  {
+    "id": "0708a41f-36cd-4655-a686-831ea61991a2",
+    "role": "labo",
+    "ownerId": "f2c000da-27fd-4aba-82db-639aa254fe3d",
+    "name": "aziz",
+    "laboId": "d23d2b2b-7416-49ba-b318-df92d55b098f",
+    "login": "aziz",
+    "passHash": "scrypt$0490917c1c000ab51798da9f4d5804be$82fad6f8db9fb45e894ef3eda0f3f0bac8879cbf25f0b3587e33a4d59eddc4e8a58825cfb4cdd38b8413622324f254bcded3ccfaa168d742c10584b030276e8e",
+    "active": true,
+    "tokenVersion": 0,
+    "createdAt": "2026-11-06T16:32:38.081Z"
   }
 ]

@@ -1,0 +1,123 @@
+{
+  "categories": [
+    {
+      "id": "0361056a-6ce8-410e-92be-f8a669824831",
+      "yonalish": "matras",
+      "nomi": "Matras",
+      "yashirin": true
+    },
+    {
+      "id": "8899faf6-2fa0-42d2-b0dd-12b24e92a36a",
+      "yonalish": "mebel",
+      "nomi": "shkaf"
+    },
+    {
+      "id": "9fd734ae-9216-4251-8df6-0d9863940993",
+      "yonalish": "mebel",
+      "nomi": "divancha"
+    },
+    {
+      "id": "73e72990-9d5b-4311-a3a1-5684980c35cc",
+      "yonalish": "mebel",
+      "nomi": "spalni garnitur"
+    },
+    {
+      "id": "661d5884-ce29-42aa-85d4-d31029fc2f95",
+      "yonalish": "mebel",
+      "nomi": "adelni"
+    },
+    {
+      "id": "36c87ed8-b17d-47c6-9f9a-673c4f504569",
+      "yonalish": "mebel",
+      "nomi": "pad zakaz"
+    }
+  ],
+  "models": [
+    {
+      "id": "ff410a65-a28d-48de-85a3-71a3ef20b3d6",
+      "categoryId": "0361056a-6ce8-410e-92be-f8a669824831",
+      "nomi": "210x165 pol artaped",
+      "qoldiq": 10,
+      "createdAt": "2026-11-06T16:28:54.932Z"
+    },
+    {
+      "id": "1214d305-54ca-4463-a986-ee1263269f41",
+      "categoryId": "0361056a-6ce8-410e-92be-f8a669824831",
+      "nomi": "210x165 artaped",
+      "qoldiq": 12,
+      "createdAt": "2026-11-06T16:29:07.345Z"
+    },
+    {
+      "id": "f43a75c3-065a-4aa4-b864-e1e61313eb03",
+      "categoryId": "0361056a-6ce8-410e-92be-f8a669824831",
+      "nomi": "200x85 artaped",
+      "qoldiq": 3,
+      "createdAt": "2026-11-06T16:29:20.284Z"
+    },
+    {
+      "id": "0d528e37-decb-4d9b-94ae-f1b57b6add43",
+      "categoryId": "8899faf6-2fa0-42d2-b0dd-12b24e92a36a",
+      "nomi": "jesika arex",
+      "qoldiq": 2,
+      "createdAt": "2026-11-06T16:30:11.914Z"
+    }
+  ],
+  "harakat": [
+    {
+      "id": "4fbbc37b-6bb7-4a51-9059-8c29b9d7e0b1",
+      "sana": "2026-11-06",
+      "vaqt": "2026-11-06T16:28:55.018Z",
+      "modelId": "ff410a65-a28d-48de-85a3-71a3ef20b3d6",
+      "yonalish": "matras",
+      "kategoriya": "Matras",
+      "model": "210x165 pol artaped",
+      "delta": 10,
+      "tur": "kirim",
+      "loadId": null,
+      "loadNomi": "",
+      "kim": "Shoxjahon Hamroqulov"
+    },
+    {
+      "id": "9c486d01-129f-4d67-a2fb-72303a3f7f14",
+      "sana": "2026-11-06",
+      "vaqt": "2026-11-06T16:29:07.345Z",
+      "modelId": "1214d305-54ca-4463-a986-ee1263269f41",
+      "yonalish": "matras",
+      "kategoriya": "Matras",
+      "model": "210x165 artaped",
+      "delta": 12,
+      "tur": "kirim",
+      "loadId": null,
+      "loadNomi": "",
+      "kim": "Shoxjahon Hamroqulov"
+    },
+    {
+      "id": "2158b45f-ab2e-4e47-ab89-5040b714755d",
+      "sana": "2026-11-06",
+      "vaqt": "2026-11-06T16:29:20.285Z",
+      "modelId": "f43a75c3-065a-4aa4-b864-e1e61313eb03",
+      "yonalish": "matras",
+      "kategoriya": "Matras",
+      "model": "200x85 artaped",
+      "delta": 3,
+      "tur": "kirim",
+      "loadId": null,
+      "loadNomi": "",
+      "kim": "Shoxjahon Hamroqulov"
+    },
+    {
+      "id": "7061712b-a4aa-4b80-8460-ed58178a4d57",
+      "sana": "2026-11-06",
+      "vaqt": "2026-11-06T16:30:11.914Z",
+      "modelId": "0d528e37-decb-4d9b-94ae-f1b57b6add43",
+      "yonalish": "mebel",
+      "kategoriya": "shkaf",
+      "model": "jesika arex",
+      "delta": 2,
+      "tur": "kirim",
+      "loadId": null,
+      "loadNomi": "",
+      "kim": "Shoxjahon Hamroqulov"
+    }
+  ]
+}

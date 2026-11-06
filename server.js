@@ -8,6 +8,8 @@ const path = require('path');
 const crypto = require('crypto');
 const XLSX = require('xlsx');
 const { createStore } = require('./store');
+const { createSklad } = require('./sklad');
+const { createNotify } = require('./notify');
 const {
   hashPassword, verifyPassword, signToken, verifyToken, parseCookies, verifyGoogleIdToken, createLimiter,
 } = require('./auth');
@@ -31,6 +33,8 @@ const HOLATLAR = ['yashil', 'qizil', 'sariq'];
 const HOLAT_EXCEL_LABEL = { qizil: 'Hali tayyor emas', sariq: 'Yuklanmoqda', yashil: 'Yuborildi' };
 
 const store = createStore(DATA_DIR);
+const sklad = createSklad(store);
+const notify = createNotify(store);
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 // Sessiya kaliti: env'dan yoki diskda bir marta yaratiladi (server qayta ishga tushsa ham sessiyalar saqlanadi)
@@ -399,7 +403,7 @@ function totalPaid(l) {
   return (l.tolovlar || []).reduce((sum, t) => sum + (Number(t.summa) || 0), 0);
 }
 function publicLoad(l) {
-  const { pin, ...rest } = l; // eski PIN maydoni hech qachon yuborilmaydi
+  const { pin, skladCutItems, ...rest } = l; // eski PIN va ichki sklad nusxasi hech qachon yuborilmaydi
   const jamiTolangan = totalPaid(l);
   return { ...rest, jamiTolangan, qoldiq: Math.max(0, (Number(l.astatka) || 0) - jamiTolangan) };
 }
@@ -419,6 +423,7 @@ function buildWorkbook(loads) {
                 'Kategoriya': l.kategoriya?.nomi || '',
                 'Nomi': l.nomi || '',
                 'Matras': l.matras?.bor ? (l.matras.turi || 'Bor') : '',
+                'Sklad mahsulotlari': (l.skladItems || []).map((i) => `${i.model} x${i.soni}`).join(', '),
                 'Izoh': l.izoh || '',
                 'Hudud': l.manzil?.hudud || '',
                 'Dom': l.manzil?.dom || '',
@@ -762,6 +767,15 @@ function normalizeOrder(loads) {
   return changed;
 }
 
+// ---------- Sklad (yo'nalish -> kategoriya -> model, kirim, hisobot) ----------
+sklad.mount(app, { requireAuth, staffOnly, can, deleteCode, readLoads, todayStr, express });
+notify.mount(app, { requireAuth, staffOnly });
+// Skladda yetmasa 409 qaytaramiz; foydalanuvchi tasdiqlasa, force bilan qayta yuboriladi
+function skladError(res, e) {
+  if (e && e.status) return res.status(e.status).json({ error: e.message, skladKam: e.status === 409, kamlar: e.kamlar });
+  throw e;
+}
+
 // ---------- Yuklar ----------
 app.get('/api/loads', requireAuth, staffOnly, (req, res) => {
   const loads = readLoads(req.paths);
@@ -776,7 +790,8 @@ app.get('/api/my-loads', requireAuth, requireRole('zborshik', 'labo'), (req, res
     ? l.labo && l.labo.id === req.user.laboId
     : l.zborshik && l.zborshik.id === req.user.zborshikId));
   mine.sort((a, b) => String(a.sana).localeCompare(String(b.sana)) || ((a.tartib ?? 1e8) - (b.tartib ?? 1e8)));
-  res.json(mine.map(publicLoad));
+  // Surat belgisi faqat zborshikka beriladi (labo ko'rmaydi)
+  res.json((isLabo ? mine : sklad.withPhotoFlags(req.paths, mine)).map(publicLoad));
 });
 
 function resolveMatras(kategoriyaNomi, input) {
@@ -798,9 +813,12 @@ function snapFilial(p, id) {
 }
 
 app.post('/api/loads', requireAuth, staffOnly, can('add'), actionCode, (req, res) => {
-  const { sana, holat, kategoriyaId, nomi, matras, izoh, manzil, astatka, tel1, tel2, zborshikId, laboId, filialId } = req.body;
-  if (!sana || !kategoriyaId || !String(nomi || '').trim()) {
-    return res.status(400).json({ error: 'Sana, kategoriya va nomi majburiy' });
+  const { sana, holat, kategoriyaId, nomi, matras, izoh, manzil, astatka, tel1, tel2, zborshikId, laboId, filialId, skladItems, force } = req.body;
+  let items = [];
+  try { items = sklad.normalizeItems(req.paths, skladItems); } catch (e) { return skladError(res, e); }
+  const nomiFinal = String(nomi || '').trim() || sklad.autoNomi(items);
+  if (!sana || !kategoriyaId || !nomiFinal) {
+    return res.status(400).json({ error: 'Sana, kategoriya va nomi (yoki sklad mahsuloti) majburiy' });
   }
   const loads = readLoads(req.paths);
   if (loads.filter((l) => l.sana === sana).length >= MAX_PER_DAY) {
@@ -814,7 +832,10 @@ app.post('/api/loads', requireAuth, staffOnly, can('add'), actionCode, (req, res
     sana,
     holat: HOLATLAR.includes(holat) ? holat : 'qizil',
     kategoriya: { id: cat.id, nomi: cat.name },
-    nomi: String(nomi).trim(),
+    nomi: nomiFinal,
+    skladItems: items,
+    skladCut: false,
+    skladCutItems: [],
     matras: resolveMatras(cat.name, matras),
     izoh: String(izoh || '').trim(),
     manzil: { hudud: manzil?.hudud || '', dom: manzil?.dom || '', padyez: manzil?.padyez || '', etaj: manzil?.etaj || '' },
@@ -830,9 +851,14 @@ app.post('/api/loads', requireAuth, staffOnly, can('add'), actionCode, (req, res
     tartib: NEW_LAST, // kunning oxirgi raqamini oladi
     createdAt: new Date().toISOString(),
   };
+  try { sklad.syncLoadStock(req.paths, newLoad, { force: !!force, kim: req.user.name, today: todayStr() }); } catch (e) { return skladError(res, e); }
   loads.push(newLoad);
   normalizeOrder(loads);
   writeLoads(req.paths, loads);
+  // Egasi (admin) zakaz qo'shsa — xodimlarga bildirishnoma (zborshik/shafyorlarga emas)
+  if (req.user.role === 'owner') {
+    try { notify.loadAdded(req.paths, req.ownerId, newLoad, req.user.name); } catch (e) { console.error('Bildirishnoma xatosi:', e.message); }
+  }
   res.json(publicLoad(newLoad));
 });
 
@@ -840,8 +866,12 @@ app.put('/api/loads/:id', requireAuth, staffOnly, can('edit'), actionCode, (req,
   const loads = readLoads(req.paths);
   const idx = loads.findIndex((l) => l.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Topilmadi' });
-  const { sana, holat, kategoriyaId, nomi, matras, izoh, manzil, astatka, tel1, tel2, zborshikId, laboId, filialId } = req.body;
+  const { sana, holat, kategoriyaId, nomi, matras, izoh, manzil, astatka, tel1, tel2, zborshikId, laboId, filialId, skladItems, force } = req.body;
   const oldSana = loads[idx].sana;
+  let itemsFinal = loads[idx].skladItems || [];
+  if (skladItems !== undefined) {
+    try { itemsFinal = sklad.normalizeItems(req.paths, skladItems); } catch (e) { return skladError(res, e); }
+  }
 
   if (sana && sana !== loads[idx].sana) {
     if (loads.filter((l) => l.sana === sana && l.id !== loads[idx].id).length >= MAX_PER_DAY) {
@@ -860,7 +890,8 @@ app.put('/api/loads/:id', requireAuth, staffOnly, can('edit'), actionCode, (req,
     sana: sana ?? loads[idx].sana,
     holat: HOLATLAR.includes(holat) ? holat : loads[idx].holat,
     kategoriya,
-    nomi: nomi !== undefined ? String(nomi).trim() : loads[idx].nomi,
+    nomi: nomi !== undefined ? (String(nomi).trim() || sklad.autoNomi(itemsFinal) || loads[idx].nomi) : loads[idx].nomi,
+    skladItems: itemsFinal,
     matras: matrasFinal,
     izoh: izoh !== undefined ? String(izoh).trim() : loads[idx].izoh,
     manzil: manzil ?? loads[idx].manzil,
@@ -872,6 +903,7 @@ app.put('/api/loads/:id', requireAuth, staffOnly, can('edit'), actionCode, (req,
     filial: filialId !== undefined ? (filialId ? (snapFilial(req.paths, filialId) || loads[idx].filial) : null) : loads[idx].filial,
   };
   if (loads[idx].sana !== oldSana) loads[idx].tartib = NEW_LAST; // boshqa kunga o'tdi — o'sha kunning oxiriga
+  try { sklad.syncLoadStock(req.paths, loads[idx], { force: !!force, kim: req.user.name, today: todayStr() }); } catch (e) { return skladError(res, e); }
   normalizeOrder(loads);
   writeLoads(req.paths, loads);
   res.json(publicLoad(loads[idx]));
@@ -882,11 +914,12 @@ app.put('/api/loads/:id/assign', requireAuth, staffOnly, can('edit'), (req, res)
   const loads = readLoads(req.paths);
   const idx = loads.findIndex((l) => l.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Topilmadi' });
-  const { zborshikId, laboId, holat, filialId } = req.body;
+  const { zborshikId, laboId, holat, filialId, force } = req.body;
   if (zborshikId !== undefined) loads[idx].zborshik = zborshikId ? (snapZborshik(req.paths, zborshikId) || loads[idx].zborshik) : null;
   if (laboId !== undefined) loads[idx].labo = laboId ? (snapLabo(req.paths, laboId) || loads[idx].labo) : null;
   if (filialId !== undefined) loads[idx].filial = filialId ? (snapFilial(req.paths, filialId) || loads[idx].filial) : null;
   if (holat !== undefined && HOLATLAR.includes(holat)) loads[idx].holat = holat;
+  try { sklad.syncLoadStock(req.paths, loads[idx], { force: !!force, kim: req.user.name, today: todayStr() }); } catch (e) { return skladError(res, e); }
   writeLoads(req.paths, loads);
   res.json(publicLoad(loads[idx]));
 });
@@ -934,7 +967,9 @@ app.put('/api/loads/:id/unpay', requireAuth, staffOnly, can('pay'), payCode, (re
 
 app.delete('/api/loads/:id', requireAuth, staffOnly, can('delete'), deleteCode, (req, res) => {
   let loads = readLoads(req.paths);
-  if (!loads.some((l) => l.id === req.params.id)) return res.status(404).json({ error: 'Topilmadi' });
+  const del = loads.find((l) => l.id === req.params.id);
+  if (!del) return res.status(404).json({ error: 'Topilmadi' });
+  sklad.releaseLoadStock(req.paths, del, { kim: req.user.name, today: todayStr() }); // ayirilgan bo'lsa, skladga qaytadi
   loads = loads.filter((l) => l.id !== req.params.id);
   normalizeOrder(loads); // qolganlar 1, 2, 3... bo'lib qayta raqamlanadi
   writeLoads(req.paths, loads);
