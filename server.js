@@ -413,7 +413,6 @@ function buildWorkbook(loads) {
                 'Filial': l.filial?.nomi || '',
                 'Kategoriya': l.kategoriya?.nomi || '',
                 'Nomi': l.nomi || '',
-                'Rang': l.rang?.nomi || '',
                 'Matras': l.matras?.bor ? (l.matras.turi || 'Bor') : '',
                 'Izoh': l.izoh || '',
                 'Hudud': l.manzil?.hudud || '',
@@ -518,19 +517,6 @@ app.post('/api/taxonomy/categories', requireAuth, staffOnly, can('add', 'team'),
   store.writeJson(req.paths.taxonomy, tax);
   res.json(cat);
 });
-app.post('/api/taxonomy/categories/:catId/colors', requireAuth, staffOnly, can('add', 'team'), (req, res) => {
-  const name = String(req.body.name || '').trim();
-  if (!name) return res.status(400).json({ error: 'Rang nomini kiriting' });
-  const tax = readTaxonomy(req.paths);
-  const cat = tax.find((c) => c.id === req.params.catId);
-  if (!cat) return res.status(404).json({ error: 'Kategoriya topilmadi' });
-  if (cat.colors.some((c) => c.name.toLowerCase() === name.toLowerCase())) return res.status(400).json({ error: 'Bu rang allaqachon mavjud' });
-  const color = { id: crypto.randomUUID(), name };
-  cat.colors.push(color);
-  store.writeJson(req.paths.taxonomy, tax);
-  res.json(color);
-});
-
 // ---------- Zborshiklar (+ ixtiyoriy login/parol) ----------
 function zborshikWithLogin(z, users) {
   const acc = users.find((u) => u.role === 'zborshik' && u.zborshikId === z.id);
@@ -726,17 +712,16 @@ function snapFilial(p, id) {
 }
 
 app.post('/api/loads', requireAuth, staffOnly, can('add'), actionCode, (req, res) => {
-  const { sana, holat, kategoriyaId, nomi, rangId, matras, izoh, manzil, astatka, tel1, tel2, zborshikId, laboId, filialId } = req.body;
-  if (!sana || !kategoriyaId || !rangId || !String(nomi || '').trim()) {
-    return res.status(400).json({ error: 'Sana, kategoriya, nomi va rang majburiy' });
+  const { sana, holat, kategoriyaId, nomi, matras, izoh, manzil, astatka, tel1, tel2, zborshikId, laboId, filialId } = req.body;
+  if (!sana || !kategoriyaId || !String(nomi || '').trim()) {
+    return res.status(400).json({ error: 'Sana, kategoriya va nomi majburiy' });
   }
   const loads = readLoads(req.paths);
   if (loads.filter((l) => l.sana === sana).length >= MAX_PER_DAY) {
     return res.status(400).json({ error: `Bu kunga zakazlar to'ldi (kuniga maksimum ${MAX_PER_DAY} ta)` });
   }
   const cat = readTaxonomy(req.paths).find((c) => c.id === kategoriyaId);
-  const rang = cat && cat.colors.find((c) => c.id === rangId);
-  if (!cat || !rang) return res.status(400).json({ error: 'Kategoriya / rang topilmadi' });
+  if (!cat) return res.status(400).json({ error: 'Kategoriya topilmadi' });
 
   const newLoad = {
     id: crypto.randomUUID(),
@@ -744,7 +729,6 @@ app.post('/api/loads', requireAuth, staffOnly, can('add'), actionCode, (req, res
     holat: HOLATLAR.includes(holat) ? holat : 'qizil',
     kategoriya: { id: cat.id, nomi: cat.name },
     nomi: String(nomi).trim(),
-    rang: { id: rang.id, nomi: rang.name },
     matras: resolveMatras(cat.name, matras),
     izoh: String(izoh || '').trim(),
     manzil: { hudud: manzil?.hudud || '', dom: manzil?.dom || '', padyez: manzil?.padyez || '', etaj: manzil?.etaj || '' },
@@ -770,7 +754,7 @@ app.put('/api/loads/:id', requireAuth, staffOnly, can('edit'), actionCode, (req,
   const loads = readLoads(req.paths);
   const idx = loads.findIndex((l) => l.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Topilmadi' });
-  const { sana, holat, kategoriyaId, nomi, rangId, matras, izoh, manzil, astatka, tel1, tel2, zborshikId, laboId, filialId } = req.body;
+  const { sana, holat, kategoriyaId, nomi, matras, izoh, manzil, astatka, tel1, tel2, zborshikId, laboId, filialId } = req.body;
   const oldSana = loads[idx].sana;
 
   if (sana && sana !== loads[idx].sana) {
@@ -779,13 +763,10 @@ app.put('/api/loads/:id', requireAuth, staffOnly, can('edit'), actionCode, (req,
     }
   }
   let kategoriya = loads[idx].kategoriya;
-  let rang = loads[idx].rang;
   let matrasFinal = loads[idx].matras;
-  if (kategoriyaId || rangId || matras !== undefined) {
+  if (kategoriyaId || matras !== undefined) {
     const cat = readTaxonomy(req.paths).find((c) => c.id === (kategoriyaId || loads[idx].kategoriya?.id));
-    const col = cat && cat.colors.find((c) => c.id === (rangId || loads[idx].rang?.id));
     if (cat) kategoriya = { id: cat.id, nomi: cat.name };
-    if (col) rang = { id: col.id, nomi: col.name };
     matrasFinal = resolveMatras(kategoriya.nomi, matras !== undefined ? matras : loads[idx].matras);
   }
   loads[idx] = {
@@ -794,7 +775,6 @@ app.put('/api/loads/:id', requireAuth, staffOnly, can('edit'), actionCode, (req,
     holat: HOLATLAR.includes(holat) ? holat : loads[idx].holat,
     kategoriya,
     nomi: nomi !== undefined ? String(nomi).trim() : loads[idx].nomi,
-    rang,
     matras: matrasFinal,
     izoh: izoh !== undefined ? String(izoh).trim() : loads[idx].izoh,
     manzil: manzil ?? loads[idx].manzil,

@@ -75,9 +75,6 @@
         <label>Nomi (xohlagan nom)
           <input type="text" id="f_nomi" placeholder="masalan: Malika, Diyor..." required />
         </label>
-        <label>Rang
-          <select id="f_rang" required></select>
-        </label>
       </div>
 
       <div class="field-row" id="matrasRow" style="display:none">
@@ -239,12 +236,7 @@
       <button class="icon-btn close-modal">✕</button>
     </div>
     <div class="modal-body">
-      <div class="section-label">🎨 Ranglar (kategoriya bo'yicha)</div>
-      <select id="teamColorCatSelect" style="margin-bottom:8px;"></select>
-      <div id="teamColorList" class="team-list"></div>
-      <button class="ghost-btn" id="teamAddColorBtn">➕ Yangi rang qo'shish</button>
-
-      <div class="section-label" style="margin-top:20px">🏢 Filiallar</div>
+      <div class="section-label">🏢 Filiallar</div>
       <div id="teamFilialList" class="team-list"></div>
       <button class="ghost-btn" id="teamAddFilialBtn">➕ Yangi filial qo'shish</button>
 
@@ -293,7 +285,7 @@
         <label class="checkbox-label"><input type="checkbox" id="s_perm_pay" /> Pul qabul qilish</label>
         <label class="checkbox-label"><input type="checkbox" id="s_perm_delete" /> Yukni o'chirish</label>
         <label class="checkbox-label"><input type="checkbox" id="s_perm_reorder" /> Zakazlar tartibini (o'rnini) almashtirish</label>
-        <label class="checkbox-label"><input type="checkbox" id="s_perm_team" /> Jamoani boshqarish (zborshik, labo, filial, rang qo'shish/o'chirish)</label>
+        <label class="checkbox-label"><input type="checkbox" id="s_perm_team" /> Jamoani boshqarish (zborshik, labo, filial qo'shish/o'chirish)</label>
       </div>
       <label class="checkbox-label" id="s_active_row" style="margin-top:12px;display:none"><input type="checkbox" id="s_active" checked /> Kirishi yoqilgan</label>
       <p class="muted-note">Zakazlarni ko'rish har bir xodimga doim ochiq. Qolgan amallar faqat yuqoridagi ruxsatlar berilsa ishlaydi.</p>

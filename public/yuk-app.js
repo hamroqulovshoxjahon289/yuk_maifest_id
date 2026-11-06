@@ -150,12 +150,6 @@ async function addCategory(name) {
   if (!res.ok) throw new Error(data.error || 'Xatolik');
   return data;
 }
-async function addColor(catId, name) {
-  const res = await fetch(`/api/taxonomy/categories/${catId}/colors`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Xatolik');
-  return data;
-}
 async function fetchZborshiklar() { zborshiklar = await (await fetch('/api/zborshiklar')).json(); }
 async function addZborshik(ism, telefon, login, password) {
   const res = await fetch('/api/zborshiklar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ism, telefon, login, password }) });
@@ -181,7 +175,6 @@ async function addFilial(nomi) {
 // ---------------- Formadagi selectlar ----------------
 const catSelect = document.getElementById('f_kategoriya');
 const nomiInput = document.getElementById('f_nomi');
-const rangSelect = document.getElementById('f_rang');
 const matrasRow = document.getElementById('matrasRow');
 const matrasBorCheck = document.getElementById('f_matras_bor');
 const matrasTuriWrap = document.getElementById('matrasTuriWrap');
@@ -219,13 +212,6 @@ function populateCategories(selectedId) {
   if (selectedId) catSelect.value = selectedId;
   toggleMatrasRow();
 }
-function populateColors(selectedId) {
-  const cat = currentCategory();
-  // "Yangi rang qo'shish" tugmasi olib tashlandi — endi faqat mavjud ranglar ko'rsatiladi
-  fillSelect(rangSelect, cat ? cat.colors : [], cat ? 'Rangni tanlang' : 'Avval kategoriya tanlang', null);
-  rangSelect.disabled = !cat;
-  if (selectedId) rangSelect.value = selectedId;
-}
 function populateZborshiklar(select, selectedId) {
   fillSelect(select, zborshiklar, '— tanlanmagan —', "➕ Yangi zborshik qo'shish", null, (z) => `${z.ism}${z.telefon ? ' — ' + z.telefon : ''}`);
   select.value = selectedId || '';
@@ -258,7 +244,6 @@ catSelect.addEventListener('change', async () => {
       const cat = await addCategory(name.trim());
       await fetchTaxonomy();
       populateCategories(cat.id);
-      populateColors('');
     } catch (err) {
       showToast(err.message, true);
       catSelect.value = '';
@@ -266,11 +251,7 @@ catSelect.addEventListener('change', async () => {
     return;
   }
   toggleMatrasRow();
-  populateColors('');
 });
-
-// "Yangi rang qo'shish" funksiyasi olib tashlandi (endi rangSelect faqat mavjud
-// ranglarni ko'rsatadi, yangi qo'shish imkoniyati yo'q)
 
 matrasBorCheck.addEventListener('change', () => {
   matrasTuriWrap.style.display = matrasBorCheck.checked ? '' : 'none';
@@ -334,7 +315,7 @@ function matchesSearch(l) {
   const hay = [
     l.nomi, l.manzil?.hudud, l.manzil?.dom, l.tel1, l.tel2,
     l.zborshik?.ism, l.zborshik?.telefon, l.labo?.raqami, l.labo?.haydovchi, l.labo?.telefon,
-    l.kategoriya?.nomi, l.rang?.nomi,
+    l.kategoriya?.nomi,
   ].filter(Boolean).join(' ').toLowerCase();
   return hay.includes(searchTerm);
 }
@@ -412,7 +393,7 @@ function renderCard(l) {
   const addrBits = [l.manzil?.hudud, l.manzil?.dom ? `dom ${l.manzil.dom}` : '', l.manzil?.padyez ? `${l.manzil.padyez}-padyez` : '', l.manzil?.etaj ? `${l.manzil.etaj}-etaj` : '']
     .filter(Boolean).join(', ');
 
-  const title = [l.nomi, l.rang?.nomi].filter(Boolean).join(' — ');
+  const title = l.nomi;
   const meta = [];
   if (l.matras?.bor) meta.push(`🛏 ${l.matras.turi}`);
   if (l.zborshik) meta.push(`🧰 ${l.zborshik.ism}`);
@@ -448,7 +429,6 @@ function openAddModal(prefilledDate) {
   document.getElementById('formModalTitle').textContent = "Yangi yuk qo'shish";
   loadForm.reset();
   populateCategories('');
-  populateColors('');
   populateZborshiklar(zborshikSelect, '');
   populateLabolar(laboSelect, '');
   populateFiliallar(filialSelect, '');
@@ -464,7 +444,6 @@ function openEditModal(l) {
   document.getElementById('formModalTitle').textContent = 'Yukni tahrirlash';
   populateCategories(l.kategoriya?.id || '');
   nomiInput.value = l.nomi || '';
-  populateColors(l.rang?.id || '');
   populateZborshiklar(zborshikSelect, l.zborshik?.id || '');
   populateLabolar(laboSelect, l.labo?.id || '');
   populateFiliallar(filialSelect, l.filial?.id || '');
@@ -526,7 +505,6 @@ loadForm.addEventListener('submit', async (e) => {
 
   if (!catSelect.value || catSelect.value === NEW_OPTION) { formError.textContent = 'Kategoriyani tanlang'; return; }
   if (!nomiInput.value.trim()) { formError.textContent = 'Nomini kiriting'; return; }
-  if (!rangSelect.value || rangSelect.value === NEW_OPTION) { formError.textContent = 'Rangni tanlang'; return; }
 
   const manzil = {
     hudud: document.getElementById('f_hudud').value.trim(),
@@ -537,7 +515,6 @@ loadForm.addEventListener('submit', async (e) => {
   const base = {
     kategoriyaId: catSelect.value,
     nomi: nomiInput.value.trim(),
-    rangId: rangSelect.value,
     matras: { bor: matrasBorCheck.checked, turi: matrasBorCheck.checked ? matrasTuriSelect.value : null },
     zborshikId: zborshikSelect.value || null,
     laboId: laboSelect.value || null,
@@ -573,7 +550,7 @@ const quickLaboSelect = document.getElementById('quickLabo');
 
 function openViewModal(l) {
   viewingLoad = l;
-  const title = [l.nomi, l.rang?.nomi].filter(Boolean).join(' — ');
+  const title = l.nomi;
   document.getElementById('viewTitle').textContent = title || 'Yuk';
   const addrLine = [l.manzil?.hudud].filter(Boolean).join(', ') || '—';
   const domLine = [
@@ -600,7 +577,6 @@ function openViewModal(l) {
     <div class="view-row"><span class="k">To'lovlar tarixi</span><span class="v">${tolovTarixi}</span></div>
     <div class="view-row"><span class="k">Kategoriya</span><span class="v">${escapeHtml(l.kategoriya?.nomi || '—')}</span></div>
     <div class="view-row"><span class="k">Nomi</span><span class="v">${escapeHtml(l.nomi || '—')}</span></div>
-    <div class="view-row"><span class="k">Rang</span><span class="v">${escapeHtml(l.rang?.nomi || '—')}</span></div>
     ${l.matras?.bor ? `<div class="view-row"><span class="k">Matras</span><span class="v">${escapeHtml(l.matras.turi)}</span></div>` : ''}
     ${l.izoh ? `<div class="view-row"><span class="k">Izoh</span><span class="v">${escapeHtml(l.izoh)}</span></div>` : ''}
     <div class="view-row"><span class="k">Jo'natish sanasi</span><span class="v">${l.sana}</span></div>
@@ -710,14 +686,13 @@ document.getElementById('printLoadBtn').onclick = () => {
     l.manzil?.padyez ? `${l.manzil.padyez}-padyez` : '',
     l.manzil?.etaj ? `${l.manzil.etaj}-etaj` : '',
   ].filter(Boolean).join(' · ') || '—';
-  const title = [l.nomi, l.rang?.nomi].filter(Boolean).join(' — ');
+  const title = l.nomi;
 
   document.getElementById('printArea').innerHTML = `
     <h1>${escapeHtml(title || 'Yuk')}</h1>
     <table class="print-table">
       <tr><td>Holat</td><td>${HOLAT_LABEL[l.holat] || l.holat}</td></tr>
       <tr><td>Kategoriya</td><td>${escapeHtml(l.kategoriya?.nomi || '—')}</td></tr>
-      <tr><td>Rang</td><td>${escapeHtml(l.rang?.nomi || '—')}</td></tr>
       ${l.matras?.bor ? `<tr><td>Matras</td><td>${escapeHtml(l.matras.turi)}</td></tr>` : ''}
       ${l.izoh ? `<tr><td>Izoh</td><td>${escapeHtml(l.izoh)}</td></tr>` : ''}
       <tr><td>Jo'natish sanasi</td><td>${l.sana}</td></tr>
@@ -780,12 +755,6 @@ const delBtn = (type, id, label) => hasPerm('team')
   : '';
 
 function renderTeamModal() {
-  // Ranglar: kategoriya tanlansa, o'sha kategoriyaning ranglari ko'rsatiladi
-  const catSel = document.getElementById('teamColorCatSelect');
-  catSel.innerHTML = taxonomy.categories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
-  if (!catSel.value && taxonomy.categories.length) catSel.value = taxonomy.categories[0].id;
-  renderTeamColorList();
-
   const zbList = document.getElementById('teamZborshikList');
   zbList.innerHTML = zborshiklar.length
     ? zborshiklar.map((z) => `<div class="team-item team-row"><div><b>${escapeHtml(z.ism)}</b>${z.telefon ? ` <span class="muted">${escapeHtml(z.telefon)}</span>` : ''}${isOwner() ? (z.login ? `<div class="muted">🔑 ${escapeHtml(z.login)}${z.loginActive ? '' : " · to'xtatilgan"}</div>` : `<div class="muted">login yo'q</div>`) : ''}</div>${isOwner() ? `<button class="ghost-btn small-btn" data-zb-login="${z.id}">🔑 ${z.login ? 'Login' : 'Login berish'}</button>` : ''}${delBtn('zborshiklar', z.id, z.ism)}</div>`).join('')
@@ -806,31 +775,6 @@ function renderTeamModal() {
   teamModal.classList.remove('hidden');
 }
 
-function renderTeamColorList() {
-  const catSel = document.getElementById('teamColorCatSelect');
-  const cat = taxonomy.categories.find((c) => c.id === catSel.value);
-  const list = document.getElementById('teamColorList');
-  list.innerHTML = (cat && cat.colors.length)
-    ? cat.colors.map((c) => `<div class="team-item"><b>${escapeHtml(c.name)}</b></div>`).join('')
-    : `<div class="empty-day">Bu kategoriyada hali rang yo'q</div>`;
-}
-
-document.getElementById('teamColorCatSelect').addEventListener('change', renderTeamColorList);
-
-document.getElementById('teamAddColorBtn').onclick = async () => {
-  const catSel = document.getElementById('teamColorCatSelect');
-  if (!catSel.value) { showToast("Avval kategoriya tanlang", true); return; }
-  const name = prompt('Yangi rang nomi:');
-  if (!name || !name.trim()) return;
-  try {
-    await addColor(catSel.value, name.trim());
-    await fetchTaxonomy();
-    renderTeamColorList();
-    showToast(`✅ "${name.trim()}" rangi qo'shildi`);
-  } catch (err) {
-    showToast(err.message, true);
-  }
-};
 
 document.getElementById('teamBtn').onclick = renderTeamModal;
 
@@ -1305,7 +1249,7 @@ let moveTarget = null;
 function openMoveModal(l) {
   moveTarget = l;
   const n = loads.filter((x) => x.sana === l.sana).length;
-  const title = [l.nomi, l.rang?.nomi].filter(Boolean).join(' — ') || 'Zakaz';
+  const title = l.nomi || 'Zakaz';
   document.getElementById('moveInfo').textContent = `${title}. Hozirgi raqami: ${l.tartib} (kunda jami ${n} ta zakaz).`;
   const inp = document.getElementById('moveInput');
   inp.min = 1; inp.max = n; inp.value = l.tartib;
@@ -1375,7 +1319,6 @@ async function boot() {
   await fetchFiliallar();
   await fetchStaff();
   populateCategories('');
-  populateColors('');
   populateZborshiklar(zborshikSelect, '');
   populateLabolar(laboSelect, '');
   populateFiliallar(filialSelect, '');

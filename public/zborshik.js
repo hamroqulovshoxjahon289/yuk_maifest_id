@@ -21,7 +21,7 @@ function card(l) {
   const tolov = l.tolandi ? "To'liq to'langan" : ((l.jamiTolangan || 0) > 0 ? `Qisman (${money(l.jamiTolangan)} so'm)` : "To'lanmagan");
   return `
     <div class="zb-card ${esc(l.holat)}">
-      <div class="zb-title">${esc([l.nomi, l.rang?.nomi].filter(Boolean).join(' — ') || '—')}</div>
+      <div class="zb-title">${esc(l.nomi || '—')}</div>
       <div class="zb-cat">${esc(l.kategoriya?.nomi || '')}${l.matras?.bor ? ` · 🛏 ${esc(l.matras.turi)}` : ''}</div>
       ${row('Holat', HOLAT_LABEL[l.holat] || esc(l.holat))}
       ${row('Manzil', esc(addr || '—'))}
