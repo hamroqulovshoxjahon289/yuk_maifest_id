@@ -105,7 +105,11 @@ function setSession(req, res, user) {
 function clearSession(res) {
   res.setHeader('Set-Cookie', 'sid=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
 }
-function homeFor(u) { return u.role === 'zborshik' ? '/zborshik.html' : '/yuk.html'; }
+function homeFor(u) {
+  if (u.role === 'zborshik') return '/zborshik.html';
+  if (u.role === 'labo') return '/labo.html';
+  return '/yuk.html';
+}
 
 function requireAuth(req, res, next) {
   const u = getUser(req);
@@ -191,6 +195,7 @@ app.get('/', (req, res) => {
 });
 app.get('/yuk.html', pageGuard(['owner', 'ishchi'], 'yuk.html'));
 app.get('/zborshik.html', pageGuard(['zborshik'], 'zborshik.html'));
+app.get('/labo.html', pageGuard(['labo'], 'labo.html'));
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // ============================================================
@@ -604,17 +609,89 @@ app.delete('/api/zborshiklar/:id/login', requireAuth, ownerOnly, deleteCode, (re
 });
 
 // ---------- Labolar / Filiallar ----------
-app.get('/api/labolar', requireAuth, staffOnly, (req, res) => res.json(readLabolar(req.paths)));
+function laboWithLogin(l, users) {
+  const acc = users.find((u) => u.role === 'labo' && u.laboId === l.id);
+  return { ...l, login: acc ? acc.login : null, loginActive: acc ? acc.active !== false : false };
+}
+app.get('/api/labolar', requireAuth, staffOnly, (req, res) => {
+  const list = readLabolar(req.paths);
+  if (req.user.role !== 'owner') return res.json(list); // ishchi login ma'lumotini ko'rmaydi
+  res.json(list.map((l) => laboWithLogin(l, store.users())));
+});
 app.post('/api/labolar', requireAuth, staffOnly, can('add', 'team'), (req, res) => {
   const raqami = String(req.body.raqami || '').trim();
   const haydovchi = String(req.body.haydovchi || '').trim();
   const telefon = String(req.body.telefon || '').trim();
   if (!raqami || !haydovchi) return res.status(400).json({ error: 'Labo raqami va haydovchi ismini kiriting' });
+
+  let loginValue = null; let passValue = null;
+  if (req.body.login || req.body.password) {
+    if (req.user.role !== 'owner') return res.status(403).json({ error: 'Login-parolni faqat egasi yarata oladi' });
+    const lg = validateLogin(req.body.login);
+    if (lg.error) return res.status(400).json({ error: lg.error });
+    const pw = validatePassword(req.body.password);
+    if (pw.error) return res.status(400).json({ error: pw.error });
+    loginValue = lg.value; passValue = pw.value;
+  }
   const list = readLabolar(req.paths);
   const l = { id: crypto.randomUUID(), raqami, haydovchi, telefon };
   list.push(l);
   store.writeJson(req.paths.labolar, list);
-  res.json(l);
+  if (loginValue) {
+    store.users().push({
+      id: crypto.randomUUID(), role: 'labo', ownerId: req.ownerId, name: haydovchi, laboId: l.id,
+      login: loginValue, passHash: hashPassword(passValue), active: true, tokenVersion: 0, createdAt: new Date().toISOString(),
+    });
+    store.saveUsers();
+  }
+  res.json(laboWithLogin(l, store.users()));
+});
+
+// Labo (shafyor) login-parolini yaratish / o'zgartirish / to'xtatish — faqat egasi
+app.put('/api/labolar/:id/login', requireAuth, ownerOnly, (req, res) => {
+  const l = readLabolar(req.paths).find((x) => x.id === req.params.id);
+  if (!l) return res.status(404).json({ error: 'Labo topilmadi' });
+  let acc = store.users().find((u) => u.role === 'labo' && u.laboId === l.id && u.ownerId === req.ownerId);
+
+  if (!acc) {
+    const lg = validateLogin(req.body.login);
+    if (lg.error) return res.status(400).json({ error: lg.error });
+    const pw = validatePassword(req.body.password);
+    if (pw.error) return res.status(400).json({ error: pw.error });
+    acc = {
+      id: crypto.randomUUID(), role: 'labo', ownerId: req.ownerId, name: l.haydovchi, laboId: l.id,
+      login: lg.value, passHash: hashPassword(pw.value), active: true, tokenVersion: 0, createdAt: new Date().toISOString(),
+    };
+    store.users().push(acc);
+  } else {
+    if (req.body.login !== undefined && String(req.body.login).trim().toLowerCase() !== acc.login) {
+      const lg = validateLogin(req.body.login, acc.id);
+      if (lg.error) return res.status(400).json({ error: lg.error });
+      acc.login = lg.value;
+      acc.tokenVersion = (acc.tokenVersion || 0) + 1;
+    }
+    if (req.body.password) {
+      const pw = validatePassword(req.body.password);
+      if (pw.error) return res.status(400).json({ error: pw.error });
+      acc.passHash = hashPassword(pw.value);
+      acc.tokenVersion = (acc.tokenVersion || 0) + 1;
+    }
+    if (req.body.active !== undefined) {
+      acc.active = !!req.body.active;
+      if (!acc.active) acc.tokenVersion = (acc.tokenVersion || 0) + 1;
+    }
+  }
+  store.saveUsers();
+  res.json(laboWithLogin(l, store.users()));
+});
+
+app.delete('/api/labolar/:id/login', requireAuth, ownerOnly, deleteCode, (req, res) => {
+  const users = store.users();
+  const idx = users.findIndex((u) => u.role === 'labo' && u.laboId === req.params.id && u.ownerId === req.ownerId);
+  if (idx === -1) return res.status(404).json({ error: 'Bu laboda login yo\'q' });
+  users.splice(idx, 1);
+  store.saveUsers();
+  res.json({ ok: true });
 });
 app.get('/api/filiallar', requireAuth, staffOnly, (req, res) => res.json(readFiliallar(req.paths)));
 app.post('/api/filiallar', requireAuth, staffOnly, can('add', 'team'), (req, res) => {
@@ -650,6 +727,12 @@ app.delete('/api/labolar/:id', requireAuth, staffOnly, can('team'), deleteCode, 
   if (idx === -1) return res.status(404).json({ error: 'Labo topilmadi' });
   list.splice(idx, 1);
   store.writeJson(req.paths.labolar, list);
+  const users = store.users();
+  let removed = false;
+  for (let i = users.length - 1; i >= 0; i--) {
+    if (users[i].role === 'labo' && users[i].laboId === req.params.id && users[i].ownerId === req.ownerId) { users.splice(i, 1); removed = true; }
+  }
+  if (removed) store.saveUsers();
   res.json({ ok: true });
 });
 app.delete('/api/filiallar/:id', requireAuth, staffOnly, can('team'), deleteCode, (req, res) => {
@@ -686,9 +769,12 @@ app.get('/api/loads', requireAuth, staffOnly, (req, res) => {
   res.json(loads.map(publicLoad));
 });
 
-// Zborshik faqat o'ziga biriktirilgan zakazlarni ko'radi (hamma ma'lumoti bilan)
-app.get('/api/my-loads', requireAuth, requireRole('zborshik'), (req, res) => {
-  const mine = readLoads(req.paths).filter((l) => l.zborshik && l.zborshik.id === req.user.zborshikId);
+// Zborshik va labo (shafyor) faqat o'ziga biriktirilgan zakazlarni ko'radi (hamma ma'lumoti bilan)
+app.get('/api/my-loads', requireAuth, requireRole('zborshik', 'labo'), (req, res) => {
+  const isLabo = req.user.role === 'labo';
+  const mine = readLoads(req.paths).filter((l) => (isLabo
+    ? l.labo && l.labo.id === req.user.laboId
+    : l.zborshik && l.zborshik.id === req.user.zborshikId));
   mine.sort((a, b) => String(a.sana).localeCompare(String(b.sana)) || ((a.tartib ?? 1e8) - (b.tartib ?? 1e8)));
   res.json(mine.map(publicLoad));
 });

@@ -5,9 +5,10 @@ Davomat (Face ID) va Ishlab chiqarish olib tashlangan. Faqat Yuk Manifest qoldi.
 ## Rollar
 | Rol | Qanday kiradi | Nimani qila oladi |
 |---|---|---|
-| **Egasi** | Google orqali | Hamma narsa: zakazlar, Jamoa, xodimlar va zborshiklarga login-parol berish |
+| **Egasi** | Google orqali | Hamma narsa: zakazlar, Jamoa, xodimlar va zborshiklar va labo shafyorlariga login-parol berish |
 | **Ishchi** | Egasi bergan login-parol | Zakazlarni ko'radi, holat/zborshik/labo almashtiradi. Qo'shish-tahrirlash, to'lov, o'chirish ruxsatlarini egasi har bir ishchiga alohida beradi |
 | **Zborshik** | Egasi bergan login-parol | Faqat o'ziga biriktirilgan zakazlarni (astatka ham) ko'radi |
+| **Labo (shafyor)** | Egasi bergan login-parol | Faqat o'ziga (o'z laboiga) biriktirilgan reyslarni ko'radi. Hech narsani o'zgartira olmaydi |
 
 Har bir ega o'z jadvalini ko'radi, boshqa egalarning ma'lumotlari aralashmaydi.
 
@@ -45,3 +46,8 @@ Birinchi marta `LEGACY_OWNER_EMAIL` dagi Gmail bilan kirganingizda, `DATA_DIR/yu
   - *O'chirish kodi*: yuk, zborshik, labo, filial, xodimni o'chirish.
   Kod qo'yilmasa, o'sha amal kodsiz ishlaydi.
 - **Xodim ruxsatlari**: yuk qo'shish, tahrirlash, pul qabul qilish, o'chirish, tartibni almashtirish, jamoani boshqarish. Hech biri berilmasa, xodim faqat zakazlarni ko'ra oladi.
+
+## Labo (shafyor) logini
+- 👥 Jamoa → Labolar bo'limida: **➕ Yangi labo qo'shish** (raqam, shafyor ismi, telefon, ixtiyoriy login-parol) yoki mavjud labo yonidagi **🔑 Login berish** tugmasi.
+- Shafyor oddiy kirish sahifasida (Login va parol bilan) kiradi va `/labo.html` sahifasida faqat o'z laboiga biriktirilgan zakazlarni ko'radi.
+- Login-parolni faqat egasi beradi/o'zgartiradi/to'xtatadi. To'xtatilsa yoki labo o'chirilsa, shafyor darhol tizimdan chiqib ketadi.

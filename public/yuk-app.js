@@ -158,8 +158,8 @@ async function addZborshik(ism, telefon, login, password) {
   return data;
 }
 async function fetchLabolar() { labolar = await (await fetch('/api/labolar')).json(); }
-async function addLabo(raqami, haydovchi, telefon) {
-  const res = await fetch('/api/labolar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ raqami, haydovchi, telefon }) });
+async function addLabo(raqami, haydovchi, telefon, login, password) {
+  const res = await fetch('/api/labolar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ raqami, haydovchi, telefon, login, password }) });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Xatolik');
   return data;
@@ -480,6 +480,7 @@ function closeModals() {
   document.getElementById('teamModal').classList.add('hidden');
   document.getElementById('staffModal').classList.add('hidden');
   document.getElementById('zbModal').classList.add('hidden');
+  document.getElementById('loModal').classList.add('hidden');
   document.getElementById('settingsModal').classList.add('hidden');
   document.getElementById('moveModal').classList.add('hidden');
   settingsCode = '';
@@ -762,7 +763,7 @@ function renderTeamModal() {
 
   const lbList = document.getElementById('teamLaboList');
   lbList.innerHTML = labolar.length
-    ? labolar.map((l) => `<div class="team-item team-row"><div><b>${escapeHtml(l.raqami)}</b> — ${escapeHtml(l.haydovchi)}${l.telefon ? ` <span class="muted">${escapeHtml(l.telefon)}</span>` : ''}</div>${delBtn('labolar', l.id, l.raqami)}</div>`).join('')
+    ? labolar.map((l) => `<div class="team-item team-row"><div><b>${escapeHtml(l.raqami)}</b> — ${escapeHtml(l.haydovchi)}${l.telefon ? ` <span class="muted">${escapeHtml(l.telefon)}</span>` : ''}${isOwner() ? (l.login ? `<div class="muted">🔑 ${escapeHtml(l.login)}${l.loginActive ? '' : " · to'xtatilgan"}</div>` : `<div class="muted">login yo'q</div>`) : ''}</div>${isOwner() ? `<button class="ghost-btn small-btn" data-lo-login="${l.id}">🔑 ${l.login ? 'Login' : 'Login berish'}</button>` : ''}${delBtn('labolar', l.id, l.raqami)}</div>`).join('')
     : `<div class="empty-day">Hali labo qo'shilmagan</div>`;
 
   const filList = document.getElementById('teamFilialList');
@@ -780,20 +781,7 @@ document.getElementById('teamBtn').onclick = renderTeamModal;
 
 document.getElementById('teamAddZborshikBtn').onclick = () => openZbModal(null);
 
-document.getElementById('teamAddLaboBtn').onclick = async () => {
-  const raqami = prompt('Labo (mashina) raqami:');
-  if (!raqami || !raqami.trim()) return;
-  const haydovchi = prompt('Haydovchi ismi:') || '';
-  const telefon = prompt('Haydovchi telefon raqami:') || '';
-  try {
-    await addLabo(raqami.trim(), haydovchi.trim(), telefon.trim());
-    await fetchLabolar();
-    renderTeamModal();
-    showToast('Labo qo\'shildi ✓');
-  } catch (err) {
-    showToast(err.message, true);
-  }
-};
+document.getElementById('teamAddLaboBtn').onclick = () => openLoModal(null);
 
 document.getElementById('teamAddFilialBtn').onclick = async () => {
   const nomi = prompt('Yangi filial nomi:');
@@ -1177,6 +1165,69 @@ document.getElementById('zbRemoveLoginBtn').onclick = async () => {
 };
 zbModal.addEventListener('click', (e) => { if (e.target === zbModal) closeModals(); });
 
+// ---------------- Labo: yaratish va shafyor login-paroli ----------------
+const loModal = document.getElementById('loModal');
+let editingLoId = null;
+function openLoModal(l) {
+  editingLoId = l ? l.id : null;
+  document.getElementById('loModalTitle').textContent = l ? `${l.raqami} — shafyor login-paroli` : 'Yangi labo';
+  document.getElementById('lo_person_row').style.display = l ? 'none' : '';
+  document.getElementById('lo_raqami').value = '';
+  document.getElementById('lo_haydovchi').value = '';
+  document.getElementById('lo_tel').value = '';
+  document.getElementById('lo_login').value = l && l.login ? l.login : '';
+  document.getElementById('lo_password').value = '';
+  document.getElementById('lo_password').placeholder = l && l.login ? "o'zgartirish uchun yangi parol yozing" : 'kamida 6 belgi';
+  document.getElementById('lo_active').checked = l ? l.loginActive !== false : true;
+  document.getElementById('lo_active_row').style.display = l && l.login ? '' : 'none';
+  document.getElementById('loRemoveLoginBtn').style.display = l && l.login ? '' : 'none';
+  document.getElementById('loError').textContent = '';
+  teamModal.classList.add('hidden');
+  loModal.classList.remove('hidden');
+}
+document.getElementById('teamLaboList').addEventListener('click', (e) => {
+  const id = e.target.closest('[data-lo-login]')?.dataset.loLogin;
+  if (id) openLoModal(labolar.find((l) => l.id === id));
+});
+document.getElementById('loForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = document.getElementById('loError');
+  err.textContent = '';
+  const login = document.getElementById('lo_login').value.trim();
+  const password = document.getElementById('lo_password').value;
+  try {
+    if (editingLoId) {
+      const l = labolar.find((x) => x.id === editingLoId);
+      const body = { login, active: document.getElementById('lo_active').checked };
+      if (password) body.password = password;
+      if (!l.login && !password) throw new Error('Parolni kiriting');
+      await apiJson(`/api/labolar/${editingLoId}/login`, 'PUT', body);
+    } else {
+      const raqami = document.getElementById('lo_raqami').value.trim();
+      const haydovchi = document.getElementById('lo_haydovchi').value.trim();
+      if (!raqami || !haydovchi) throw new Error('Labo raqami va shafyor ismini kiriting');
+      if ((login && !password) || (!login && password)) throw new Error("Login va parolni ikkalasini ham kiriting (yoki ikkalasini ham bo'sh qoldiring)");
+      await addLabo(raqami, haydovchi, document.getElementById('lo_tel').value.trim(), login || undefined, password || undefined);
+    }
+    await fetchLabolar();
+    populateLabolar(laboSelect, '');
+    loModal.classList.add('hidden');
+    renderTeamModal();
+    showToast('Saqlandi ✓');
+  } catch (ex) { err.textContent = ex.message; }
+});
+document.getElementById('loRemoveLoginBtn').onclick = async () => {
+  if (!editingLoId || !confirm("Bu shafyorning login-parolini o'chirasizmi? U endi kira olmaydi (labo ro'yxatda qoladi).")) return;
+  try {
+    await callWithCode(`/api/labolar/${editingLoId}/login`, 'DELETE', null, 'delete');
+    await fetchLabolar();
+    loModal.classList.add('hidden');
+    renderTeamModal();
+    showToast("Login o'chirildi");
+  } catch (ex) { document.getElementById('loError').textContent = ex.message; }
+};
+loModal.addEventListener('click', (e) => { if (e.target === loModal) closeModals(); });
+
 // ---------------- Chiqish ----------------
 document.getElementById('logoutBtn').onclick = async () => {
   await _origFetch('/api/auth/logout', { method: 'POST' });
@@ -1309,6 +1360,7 @@ async function boot() {
   if (isOwner()) document.getElementById('settingsBtn').style.display = '';
   if (!hasPerm('team')) document.getElementById('teamBtn').style.display = 'none';
   if (me.role === 'zborshik') { location.href = '/zborshik.html'; return; }
+  if (me.role === 'labo') { location.href = '/labo.html'; return; }
   document.getElementById('userName').textContent = `${me.name}${isOwner() ? ' (egasi)' : ''}`;
   if (!hasPerm('add')) {
     document.getElementById('addLoadTopBtn').style.display = 'none';

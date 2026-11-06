@@ -68,7 +68,7 @@ $('logoutBtn').onclick = async () => { await fetch('/api/auth/logout', { method:
   const me = await fetch('/api/auth/me');
   if (!me.ok) { location.href = '/'; return; }
   const u = await me.json();
-  if (u.role !== 'zborshik') { location.href = '/yuk.html'; return; }
+  if (u.role !== 'zborshik') { location.href = '/'; return; }
   $('zbName').textContent = u.name;
   await load();
   setInterval(load, 60000); // har daqiqada yangilanadi

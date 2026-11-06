@@ -1,0 +1,39 @@
+[
+  {
+    "id": "ab1acc6b-ed7e-471c-9a14-3c59fa1d4ccb",
+    "sana": "2026-11-06",
+    "holat": "qizil",
+    "kategoriya": {
+      "id": "8c336496-38c4-497f-bfde-3171a8f4b8db",
+      "nomi": "Shkaf"
+    },
+    "nomi": "leylaaa",
+    "matras": {
+      "bor": false,
+      "turi": null
+    },
+    "izoh": "yaxshi bo'lsin",
+    "manzil": {
+      "hudud": "",
+      "dom": "",
+      "padyez": "",
+      "etaj": ""
+    },
+    "astatka": 0,
+    "tel1": "",
+    "tel2": "",
+    "zborshik": null,
+    "labo": {
+      "id": "dd77b350-fc7f-4be7-b525-e014cc044743",
+      "raqami": "312",
+      "haydovchi": "aziz",
+      "telefon": ""
+    },
+    "filial": null,
+    "yaratdi": "Shoxjahon Hamroqulov",
+    "tolovlar": [],
+    "tolandi": false,
+    "tartib": 1,
+    "createdAt": "2026-11-06T08:47:11.408Z"
+  }
+]

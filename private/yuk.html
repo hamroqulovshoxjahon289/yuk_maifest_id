@@ -336,6 +336,50 @@
   </div>
 </div>
 
+<!-- ============ LABO MODAL (yaratish / shafyor login-parol) ============ -->
+<div id="loModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="loModalTitle">Yangi labo</h2>
+      <button class="icon-btn close-modal">✕</button>
+    </div>
+    <form id="loForm" class="modal-body">
+      <div id="lo_person_row">
+        <div class="field-row">
+          <label>Labo (mashina) raqami
+            <input type="text" id="lo_raqami" placeholder="masalan: 01 A 123 BC" />
+          </label>
+          <label>Shafyor ismi
+            <input type="text" id="lo_haydovchi" placeholder="masalan: Aziz" />
+          </label>
+        </div>
+        <div class="field-row">
+          <label>Shafyor telefoni
+            <input type="tel" id="lo_tel" placeholder="+998 90 123 45 67" />
+          </label>
+        </div>
+      </div>
+      <div class="section-label">Shafyor kirishi uchun login-parol</div>
+      <div class="field-row">
+        <label>Login
+          <input type="text" id="lo_login" placeholder="aziz01" autocomplete="off" autocapitalize="none" />
+        </label>
+        <label>Parol
+          <input type="text" id="lo_password" placeholder="kamida 6 belgi" autocomplete="off" />
+        </label>
+      </div>
+      <label class="checkbox-label" id="lo_active_row" style="margin-top:12px;display:none"><input type="checkbox" id="lo_active" checked /> Kirishi yoqilgan</label>
+      <p class="muted-note">Login-parol bersangiz, shafyor shu bilan kirib faqat o'ziga biriktirilgan reyslarni ko'radi. Xohlamasangiz bo'sh qoldiring.</p>
+      <p class="form-error" id="loError"></p>
+      <div class="modal-actions">
+        <button type="button" class="danger-btn" id="loRemoveLoginBtn" style="display:none">Loginni o'chirish</button>
+        <button type="button" class="ghost-btn close-modal">Bekor qilish</button>
+        <button type="submit" class="primary-btn">Saqlash</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- ============ HISOBOT MODAL ============ -->
 <div id="reportModal" class="modal-overlay hidden">
   <div class="modal report-modal">
