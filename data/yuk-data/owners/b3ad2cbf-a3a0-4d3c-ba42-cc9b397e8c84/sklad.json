@@ -1,0 +1,82 @@
+{
+  "categories": [
+    {
+      "id": "c1c1ace0-f3d8-42c4-8f2c-8964f6c8d179",
+      "yonalish": "matras",
+      "nomi": "Matras",
+      "yashirin": true
+    },
+    {
+      "id": "6faf2b22-2085-4619-b332-9e546648d15e",
+      "yonalish": "mebel",
+      "nomi": "shka"
+    }
+  ],
+  "models": [
+    {
+      "id": "af901edd-9801-4576-9500-a96a20b5b843",
+      "categoryId": "c1c1ace0-f3d8-42c4-8f2c-8964f6c8d179",
+      "nomi": "165x210 artped",
+      "qoldiq": 10,
+      "createdAt": "2026-11-07T07:28:28.176Z"
+    },
+    {
+      "id": "f23e41e1-76f1-4885-828b-706c071c4b7b",
+      "categoryId": "c1c1ace0-f3d8-42c4-8f2c-8964f6c8d179",
+      "nomi": "165x210 pol",
+      "qoldiq": 10,
+      "createdAt": "2026-11-07T07:28:38.406Z"
+    },
+    {
+      "id": "4b576627-4407-4800-934d-d5b875b58fe0",
+      "categoryId": "6faf2b22-2085-4619-b332-9e546648d15e",
+      "nomi": "jesika ore",
+      "qoldiq": 1,
+      "createdAt": "2026-11-07T07:28:54.882Z"
+    }
+  ],
+  "harakat": [
+    {
+      "id": "97861fdd-56b0-4643-9952-fc9a5834dfa0",
+      "sana": "2026-11-07",
+      "vaqt": "2026-11-07T07:28:28.248Z",
+      "modelId": "af901edd-9801-4576-9500-a96a20b5b843",
+      "yonalish": "matras",
+      "kategoriya": "Matras",
+      "model": "165x210 artped",
+      "delta": 10,
+      "tur": "kirim",
+      "loadId": null,
+      "loadNomi": "",
+      "kim": "Shoxjahon Hamroqulov"
+    },
+    {
+      "id": "1560aceb-fe78-42bc-991f-096b5996b945",
+      "sana": "2026-11-07",
+      "vaqt": "2026-11-07T07:28:38.406Z",
+      "modelId": "f23e41e1-76f1-4885-828b-706c071c4b7b",
+      "yonalish": "matras",
+      "kategoriya": "Matras",
+      "model": "165x210 pol",
+      "delta": 10,
+      "tur": "kirim",
+      "loadId": null,
+      "loadNomi": "",
+      "kim": "Shoxjahon Hamroqulov"
+    },
+    {
+      "id": "637e0d0f-9cc6-439c-960a-c12e1fa18266",
+      "sana": "2026-11-07",
+      "vaqt": "2026-11-07T07:28:54.882Z",
+      "modelId": "4b576627-4407-4800-934d-d5b875b58fe0",
+      "yonalish": "mebel",
+      "kategoriya": "shka",
+      "model": "jesika ore",
+      "delta": 1,
+      "tur": "kirim",
+      "loadId": null,
+      "loadNomi": "",
+      "kim": "Shoxjahon Hamroqulov"
+    }
+  ]
+}

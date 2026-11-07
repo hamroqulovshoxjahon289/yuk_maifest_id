@@ -1,0 +1,108 @@
+[
+  {
+    "id": "98f3743c-4830-48b1-9fef-d1067701de36",
+    "sana": "2026-11-07",
+    "holat": "qizil",
+    "kategoriya": {
+      "id": "eec71df2-14af-45aa-a6cb-ad395c293686",
+      "nomi": "Shkaf"
+    },
+    "nomi": "leylaaa",
+    "skladItems": [
+      {
+        "modelId": "af901edd-9801-4576-9500-a96a20b5b843",
+        "yonalish": "matras",
+        "kategoriya": "Matras",
+        "model": "165x210 artped",
+        "soni": 1
+      }
+    ],
+    "skladCut": false,
+    "skladCutItems": [],
+    "matras": {
+      "bor": false,
+      "turi": null
+    },
+    "izoh": "",
+    "manzil": {
+      "hudud": "",
+      "dom": "",
+      "padyez": "",
+      "etaj": ""
+    },
+    "astatka": 1700000,
+    "tel1": "",
+    "tel2": "",
+    "zborshik": {
+      "id": "fb4f1657-e1ad-49b5-9ab4-599f5b51d82f",
+      "ism": "muxammad",
+      "telefon": "9849829"
+    },
+    "labo": null,
+    "filial": null,
+    "yaratdi": "Shoxjahon Hamroqulov",
+    "tolovlar": [],
+    "tolandi": false,
+    "tartib": 1,
+    "createdAt": "2026-11-07T07:30:51.931Z",
+    "zalog": {
+      "summa": 200000,
+      "izoh": "",
+      "sana": "2026-11-07",
+      "kim": "Shoxjahon Hamroqulov"
+    }
+  },
+  {
+    "id": "460255d9-282e-4c2d-b02d-76eef067cff9",
+    "sana": "2026-11-07",
+    "holat": "qizil",
+    "kategoriya": {
+      "id": "eec71df2-14af-45aa-a6cb-ad395c293686",
+      "nomi": "Shkaf"
+    },
+    "nomi": "leyla orex",
+    "skladItems": [
+      {
+        "modelId": "af901edd-9801-4576-9500-a96a20b5b843",
+        "yonalish": "matras",
+        "kategoriya": "Matras",
+        "model": "165x210 artped",
+        "soni": 1
+      }
+    ],
+    "skladCut": false,
+    "skladCutItems": [],
+    "matras": {
+      "bor": false,
+      "turi": null
+    },
+    "izoh": "",
+    "manzil": {
+      "hudud": "ravonak",
+      "dom": "12",
+      "padyez": "",
+      "etaj": ""
+    },
+    "astatka": 1300000,
+    "tel1": "979341317",
+    "tel2": "948751413",
+    "zborshik": null,
+    "labo": null,
+    "filial": null,
+    "yaratdi": "aziz",
+    "tolovlar": [],
+    "tolandi": false,
+    "tartib": 2,
+    "createdAt": "2026-11-07T07:32:42.853Z",
+    "sotuvchi": {
+      "id": "7832a6da-2947-4e5a-88e8-a5fc01bf7861",
+      "ism": "aziz"
+    },
+    "zalog": {
+      "summa": 200000,
+      "izoh": "",
+      "sana": "2026-11-07",
+      "kim": "aziz"
+    }
+  }
+]

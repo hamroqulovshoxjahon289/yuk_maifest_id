@@ -28,6 +28,8 @@ let currentStart = startOfDay(new Date());
 let editingId = null;
 let viewingLoad = null;
 let searchTerm = '';
+let editingPendingId = null; // sotuvchi zakazini tahrirlab tasdiqlash rejimi
+let sellerList = [];
 
 // ---------------- Sana yordamchilari ----------------
 function startOfDay(d) { const date = new Date(d); date.setHours(0, 0, 0, 0); return date; }
@@ -418,6 +420,8 @@ function renderCard(l) {
   if ((l.skladItems || []).length > 3) meta.push(`+${l.skladItems.length - 3} ta`);
   if (l.zborshik) meta.push(`🧰 ${l.zborshik.ism}`);
   if (l.labo) meta.push(`🚚 ${l.labo.raqami}`);
+  if (isOwner() && l.zalog) meta.push(`💵 Zalog ${fmtMoney(l.zalog.summa)}`);
+  if (isOwner() && l.sotuvchi) meta.push(`🛍 ${l.sotuvchi.ism}`);
 
   card.innerHTML = `
     <div class="load-card-top">
@@ -458,6 +462,8 @@ function openAddModal(prefilledDate) {
   renderPicker();
   document.getElementById('f_sana').value = prefilledDate || toISO(new Date());
   formError.textContent = '';
+  setZalogFields(null);
+  document.getElementById('formSubmitBtn').textContent = 'Saqlash';
   formModal.classList.remove('hidden');
 }
 
@@ -493,8 +499,17 @@ function openEditModal(l) {
   formItems = (l.skladItems || []).map((i) => ({ ...i }));
   renderPicker();
   formError.textContent = '';
+  setZalogFields(l.zalog || null);
+  document.getElementById('formSubmitBtn').textContent = 'Saqlash';
   closeModals();
   formModal.classList.remove('hidden');
+}
+
+// Zalog maydoni faqat egasiga ko'rinadi
+function setZalogFields(z) {
+  document.getElementById('zalogRow').style.display = isOwner() ? '' : 'none';
+  document.getElementById('f_zalog').value = z && z.summa ? z.summa : '';
+  document.getElementById('f_zalogIzoh').value = z && z.izoh ? z.izoh : '';
 }
 
 function closeModals() {
@@ -510,6 +525,10 @@ function closeModals() {
   document.getElementById('notifModal').classList.add('hidden');
   document.getElementById('settingsModal').classList.add('hidden');
   document.getElementById('moveModal').classList.add('hidden');
+  document.getElementById('sellerModal').classList.add('hidden');
+  document.getElementById('pendingModal').classList.add('hidden');
+  document.getElementById('pendingViewModal').classList.add('hidden');
+  editingPendingId = null;
   settingsCode = '';
 }
 
@@ -558,8 +577,23 @@ loadForm.addEventListener('submit', async (e) => {
     tel2: document.getElementById('f_tel2').value.trim(),
     skladItems: itemsToSend,
   };
+  if (isOwner()) {
+    base.zalogSumma = document.getElementById('f_zalog').value;
+    base.zalogIzoh = document.getElementById('f_zalogIzoh').value.trim();
+  }
 
   try {
+    if (editingPendingId) {
+      // Sotuvchi zakazini tahrirlab tasdiqlash
+      const pid = editingPendingId;
+      await withStockConfirm((force) => callWithCode(`/api/pending/${pid}/approve`, 'POST', { ...base, force }));
+      showToast("Zakaz tahrirlanib tasdiqlandi va jadvalga qo'shildi ✓");
+      if (itemsToSend.length) fetchSklad().catch(() => {});
+      closeModals();
+      await refresh();
+      pollPending();
+      return;
+    }
     if (editingId) {
       await withStockConfirm((force) => updateLoad(editingId, { ...base, force }));
       showToast('Yuk yangilandi ✓');
@@ -612,6 +646,8 @@ function openViewModal(l) {
     ${l.matras?.bor ? `<div class="view-row"><span class="k">Matras</span><span class="v">${escapeHtml(l.matras.turi)}</span></div>` : ''}
     ${(l.skladItems || []).length ? `<div class="view-row"><span class="k">Sklad mahsulotlari</span><span class="v">${l.skladItems.map((i) => `${YON_ICON[i.yonalish] || '📦'} ${i.yonalish === 'matras' ? '' : `${escapeHtml(i.kategoriya)} · `}<b>${escapeHtml(i.model)}</b> × ${i.soni}`).join('<br>')}<br><span class="sk-muted">${l.skladCut ? 'Skladdan ayirildi ✓' : 'Yuborilganda skladdan ayiriladi'}</span></span></div>` : `<div class="view-row"><span class="k">Sklad mahsulotlari</span><span class="v"><span class="sk-warn-text">Tanlanmagan — «Yuborildi» bosilganda skladdan ayirilmaydi. «Tahrirlash» orqali qo'shing.</span></span></div>`}
     ${l.izoh ? `<div class="view-row"><span class="k">Izoh</span><span class="v">${escapeHtml(l.izoh)}</span></div>` : ''}
+    ${isOwner() && l.sotuvchi ? `<div class="view-row"><span class="k">🛍 Sotuvchi</span><span class="v">${escapeHtml(l.sotuvchi.ism)}</span></div>` : ''}
+    ${isOwner() && l.zalog ? `<div class="view-row"><span class="k">💵 Zalog</span><span class="v mono">${fmtMoney(l.zalog.summa)} so'm<br><span class="muted">${escapeHtml(l.zalog.sana || '')}${l.zalog.kim ? ' · ' + escapeHtml(l.zalog.kim) : ''}${l.zalog.izoh ? ' · ' + escapeHtml(l.zalog.izoh) : ''}</span></span></div>` : ''}
     <div class="view-row"><span class="k">Jo'natish sanasi</span><span class="v">${l.sana}</span></div>
     <div class="view-row"><span class="k">Hudud</span><span class="v">${escapeHtml(addrLine)}</span></div>
     <div class="view-row"><span class="k">Dom / padyez / etaj</span><span class="v">${escapeHtml(domLine)}</span></div>
@@ -812,7 +848,7 @@ function renderTeamModal() {
     : `<div class="empty-day">Hali filial qo'shilmagan</div>`;
 
   document.getElementById('staffSection').classList.toggle('hidden', !isOwner());
-  if (isOwner()) renderStaffList();
+  if (isOwner()) { renderStaffList(); renderSellerList(); }
   teamModal.classList.remove('hidden');
 }
 
@@ -943,6 +979,8 @@ function renderReport() {
 
   document.getElementById('reportBody').innerHTML = `
     <div id="skReport"></div>
+    <div id="matrasMonthReport"></div>
+    <div id="zalogReport"></div>
     <div class="report-print-head">
       <h3 class="report-subhead" style="margin:0;">💰 Astatka / Kassa (7 kunlik)</h3>
       <button class="ghost-btn small-btn" id="printKassaReportBtn">🖨️ Shu jadvalni chop etish</button>
@@ -986,6 +1024,8 @@ function renderReport() {
   `;
   document.getElementById('reportModal').classList.remove('hidden');
   renderSkladReport();
+  renderMatrasMonth();
+  renderZalogReport();
 
   document.getElementById('printKassaReportBtn').onclick = () => printKassaReport(days, umumiy);
   document.getElementById('printZborshikReportBtn').onclick = () => {
@@ -1829,6 +1869,319 @@ teamModal.addEventListener('click', async (e) => {
   } catch (err) { showToast(err.message, true); }
 });
 
+// ============================================================
+//  SOTUVCHILAR (do'kon): login-parol berish — faqat egasi
+// ============================================================
+async function fetchSellers() { sellerList = isOwner() ? await (await fetch('/api/sotuvchilar')).json() : []; }
+function renderSellerList() {
+  const box = document.getElementById('teamSellerList');
+  box.innerHTML = sellerList.length ? sellerList.map((u) => `<div class="team-item team-row"><div><b>${escapeHtml(u.name)}</b> <span class="muted">${escapeHtml(u.login)}${u.active ? '' : " · to'xtatilgan"}</span><div class="muted">${u.perms.add ? "zakaz qo'sha oladi" : "zakaz qo'shishga ruxsat yo'q"}</div></div><button class="ghost-btn small-btn" data-seller-edit="${u.id}">Tahrirlash</button></div>`).join('')
+    : `<div class="empty-day">Hali sotuvchi qo'shilmagan</div>`;
+}
+const sellerModal = document.getElementById('sellerModal');
+let editingSellerId = null;
+function openSellerModal(u) {
+  editingSellerId = u ? u.id : null;
+  document.getElementById('sellerModalTitle').textContent = u ? 'Sotuvchini tahrirlash' : 'Yangi sotuvchi';
+  document.getElementById('se_name').value = u ? u.name : '';
+  document.getElementById('se_login').value = u ? u.login : '';
+  document.getElementById('se_password').value = '';
+  document.getElementById('se_password').placeholder = u ? "o'zgartirish uchun yangi parol yozing" : 'kamida 6 belgi';
+  document.getElementById('se_perm_add').checked = u ? u.perms.add : true;
+  document.getElementById('se_active').checked = u ? u.active : true;
+  document.getElementById('se_active_row').style.display = u ? '' : 'none';
+  document.getElementById('sellerDeleteBtn').style.display = u ? '' : 'none';
+  document.getElementById('sellerError').textContent = '';
+  teamModal.classList.add('hidden');
+  sellerModal.classList.remove('hidden');
+}
+document.getElementById('teamAddSellerBtn').onclick = () => openSellerModal(null);
+document.getElementById('teamSellerList').addEventListener('click', (e) => {
+  const id = e.target.closest('[data-seller-edit]')?.dataset.sellerEdit;
+  if (id) openSellerModal(sellerList.find((u) => u.id === id));
+});
+document.getElementById('sellerForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = document.getElementById('sellerError');
+  err.textContent = '';
+  const body = {
+    name: document.getElementById('se_name').value.trim(),
+    login: document.getElementById('se_login').value.trim(),
+    perms: { add: document.getElementById('se_perm_add').checked },
+  };
+  const pw = document.getElementById('se_password').value;
+  try {
+    if (editingSellerId) {
+      if (pw) body.password = pw;
+      body.active = document.getElementById('se_active').checked;
+      await apiJson(`/api/sotuvchilar/${editingSellerId}`, 'PUT', body);
+    } else {
+      body.password = pw;
+      await apiJson('/api/sotuvchilar', 'POST', body);
+    }
+    await fetchSellers();
+    sellerModal.classList.add('hidden');
+    renderTeamModal();
+    showToast('Sotuvchi saqlandi ✓');
+  } catch (ex) { err.textContent = ex.message; }
+});
+document.getElementById('sellerDeleteBtn').onclick = async () => {
+  if (!editingSellerId || !confirm("Bu sotuvchini o'chirasizmi? U darhol tizimdan chiqib ketadi. Avval qabul qilingan zakaz va zalog yozuvlari saqlanib qoladi.")) return;
+  try {
+    await callWithCode(`/api/sotuvchilar/${editingSellerId}`, 'DELETE', null, 'delete');
+    await fetchSellers();
+    sellerModal.classList.add('hidden');
+    renderTeamModal();
+    showToast("Sotuvchi o'chirildi");
+  } catch (ex) { document.getElementById('sellerError').textContent = ex.message; }
+};
+sellerModal.addEventListener('click', (e) => { if (e.target === sellerModal) closeModals(); });
+
+// ============================================================
+//  KUTILAYOTGAN ZAKAZLAR (sotuvchilardan): tekshirish -> ✔ yoki tahrirlab ✔
+// ============================================================
+const pendingBtn = document.getElementById('pendingBtn');
+const pendingBadge = document.getElementById('pendingBadge');
+let pendingKnown = null;
+let pendingItems = [];
+let viewingPending = null;
+
+async function pollPending() {
+  if (!isOwner()) return;
+  try {
+    const { count } = await apiJson('/api/pending/count', 'GET');
+    pendingBadge.textContent = count > 99 ? '99+' : String(count);
+    pendingBadge.classList.toggle('hidden', !count);
+    if (pendingKnown !== null && count > pendingKnown) showToast(`📥 Tasdiqlash uchun yangi zakaz keldi (jami ${count} ta)`);
+    pendingKnown = count;
+    if (!document.getElementById('pendingModal').classList.contains('hidden')) await loadPendingList();
+  } catch { /* tarmoq xatosi — keyingi safar */ }
+}
+function initPending() {
+  pendingBtn.style.display = '';
+  pollPending();
+  setInterval(pollPending, 20000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pollPending(); });
+}
+async function loadPendingList() {
+  pendingItems = await apiJson('/api/pending', 'GET');
+  const box = document.getElementById('pendingList');
+  box.innerHTML = pendingItems.length ? pendingItems.map((p) => {
+    const items = (p.skladItems || []).slice(0, 3).map((i) => `${i.model} ×${i.soni}`).join(', ') + ((p.skladItems || []).length > 3 ? ` +${p.skladItems.length - 3}` : '');
+    return `<div class="team-item team-row pend-row" data-pid="${p.id}" style="cursor:pointer"><div><b>${escapeHtml(p.nomi || items || '—')}</b> <span class="muted">${escapeHtml(p.kategoriya?.nomi || '')}</span><div class="muted">🛍 ${escapeHtml(p.sotuvchi?.ism || '')} · 📅 ${escapeHtml(p.sana)} · 🕒 ${escapeHtml(fmtCreated(p.createdAt))}${p.zalogSumma ? ` · 💵 ${fmtMoney(p.zalogSumma)}` : ''}</div>${items ? `<div class="muted">📦 ${escapeHtml(items)}</div>` : ''}</div><span class="ghost-btn small-btn">Ochish ›</span></div>`;
+  }).join('') : `<div class="empty-day">Hozircha kutilayotgan zakaz yo'q 🎉</div>`;
+}
+pendingBtn.onclick = async () => {
+  try { await loadPendingList(); } catch (err) { showToast(err.message, true); return; }
+  document.getElementById('pendingModal').classList.remove('hidden');
+};
+document.getElementById('pendingModal').addEventListener('click', (e) => {
+  if (e.target.id === 'pendingModal') { closeModals(); return; }
+  const id = e.target.closest('[data-pid]')?.dataset.pid;
+  if (id) openPendingView(pendingItems.find((p) => p.id === id));
+});
+document.getElementById('pendingViewModal').addEventListener('click', (e) => { if (e.target.id === 'pendingViewModal') document.getElementById('pendingViewModal').classList.add('hidden'); });
+document.querySelector('#pendingViewModal .pv-close').onclick = () => document.getElementById('pendingViewModal').classList.add('hidden');
+
+function openPendingView(p) {
+  if (!p) return;
+  viewingPending = p;
+  const addr = [p.manzil?.hudud, p.manzil?.dom ? `dom ${p.manzil.dom}` : '', p.manzil?.padyez ? `${p.manzil.padyez}-padyez` : '', p.manzil?.etaj ? `${p.manzil.etaj}-etaj` : ''].filter(Boolean).join(', ') || '—';
+  const row = (k, v) => `<div class="view-row"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  document.getElementById('pvTitle').textContent = p.nomi || (p.skladItems || []).map((i) => i.model).join(', ') || 'Zakaz';
+  document.getElementById('pvBody').innerHTML = `
+    <div class="view-created">🛍 Sotuvchi: <b>${escapeHtml(p.sotuvchi?.ism || '—')}</b> · 🕒 ${fmtCreated(p.createdAt)}</div>
+    ${row("Jo'natish sanasi", escapeHtml(p.sana))}
+    ${row('Kategoriya', escapeHtml(p.kategoriya?.nomi || '—'))}
+    ${row('Nomi', escapeHtml(p.nomi || '—'))}
+    ${p.matras?.bor ? row('Matras', escapeHtml(p.matras.turi)) : ''}
+    ${row('Sklad mahsulotlari', (p.skladItems || []).length ? p.skladItems.map((i) => `${YON_ICON[i.yonalish] || '📦'} ${i.yonalish === 'matras' ? '' : `${escapeHtml(i.kategoriya)} · `}<b>${escapeHtml(i.model)}</b> × ${i.soni}`).join('<br>') : '<span class="sk-warn-text">Tanlanmagan</span>')}
+    ${row('Manzil', escapeHtml(addr))}
+    ${row('Astatka', `${fmtMoney(p.astatka)} so'm`)}
+    ${row('💵 Zalog', p.zalogSumma ? `<b>${fmtMoney(p.zalogSumma)} so'm</b>${p.zalogIzoh ? `<br><span class="muted">${escapeHtml(p.zalogIzoh)}</span>` : ''}` : 'Yo\'q')}
+    ${row('1-telefon', escapeHtml(p.tel1 || '—'))}
+    ${row('2-telefon', escapeHtml(p.tel2 || '—'))}
+    ${row('Filial', escapeHtml(p.filial?.nomi || '—'))}
+    ${p.izoh ? row('Izoh', escapeHtml(p.izoh)) : ''}
+  `;
+  document.getElementById('pendingViewModal').classList.remove('hidden');
+}
+
+document.getElementById('pvApproveBtn').onclick = async () => {
+  const p = viewingPending;
+  if (!p) return;
+  try {
+    await withStockConfirm((force) => callWithCode(`/api/pending/${p.id}/approve`, 'POST', { force }));
+    showToast("✔ Zakaz tasdiqlandi va jadvalga qo'shildi");
+    document.getElementById('pendingViewModal').classList.add('hidden');
+    await refresh();
+    await pollPending();
+    await loadPendingList();
+  } catch (err) { showToast(err.message, true); }
+};
+document.getElementById('pvRejectBtn').onclick = async () => {
+  const p = viewingPending;
+  if (!p) return;
+  const sabab = prompt('Rad etish sababi (sotuvchiga ko\'rinadi, ixtiyoriy):');
+  if (sabab === null) return;
+  try {
+    await apiJson(`/api/pending/${p.id}/reject`, 'POST', { sabab });
+    showToast('Zakaz rad etildi');
+    document.getElementById('pendingViewModal').classList.add('hidden');
+    await pollPending();
+    await loadPendingList();
+  } catch (err) { showToast(err.message, true); }
+};
+document.getElementById('pvEditBtn').onclick = () => {
+  const p = viewingPending;
+  if (!p) return;
+  const pseudo = {
+    kategoriya: p.kategoriya, nomi: p.nomi, matras: p.matras, izoh: p.izoh, sana: p.sana, holat: 'qizil',
+    manzil: p.manzil, astatka: p.astatka, tel1: p.tel1, tel2: p.tel2, filial: p.filial, zborshik: null, labo: null,
+    skladItems: p.skladItems, zalog: p.zalogSumma ? { summa: p.zalogSumma, izoh: p.zalogIzoh } : null,
+  };
+  openEditModal(pseudo);               // formani to'ldiradi (va boshqa oynalarni yopadi)
+  editingId = null;
+  editingPendingId = p.id;             // closeModals() uni tozalaydi, shuning uchun shu yerda o'rnatamiz
+  document.getElementById('formModalTitle').textContent = `Tekshirish va tasdiqlash — sotuvchi: ${p.sotuvchi?.ism || ''}`;
+  document.getElementById('formSubmitBtn').textContent = '✔ Tahrirlab tasdiqlash';
+};
+
+// ============================================================
+//  HISOBOT: 1 oylik MATRAS (nima uchun qancha kerak / nimaga ketdi) + chop etish
+// ============================================================
+function matrasMonthData(from, to) {
+  const models = new Map();
+  const orders = [];
+  loads.forEach((l) => {
+    if (!l.sana || l.sana < from || l.sana > to) return;
+    const sent = l.holat === 'yashil';
+    (l.skladItems || []).filter((i) => i.yonalish === 'matras').forEach((i) => {
+      if (!models.has(i.modelId)) {
+        const m = sklad.models.find((x) => x.id === i.modelId);
+        models.set(i.modelId, { model: i.model, jami: 0, ketdi: 0, qoldi: 0, zakaz: 0, skladda: m ? (Number(m.qoldiq) || 0) : null });
+      }
+      const r = models.get(i.modelId);
+      r.jami += i.soni; r.zakaz += 1;
+      if (sent) r.ketdi += i.soni; else r.qoldi += i.soni;
+      orders.push({ sana: l.sana, tartib: l.tartib || 0, nomi: l.nomi || '—', hudud: l.manzil?.hudud || '', filial: l.filial?.nomi || '', model: i.model, soni: i.soni, sent });
+    });
+  });
+  orders.sort((a, b) => a.sana.localeCompare(b.sana) || a.tartib - b.tartib || a.model.localeCompare(b.model));
+  const rows = [...models.values()].sort((a, b) => b.jami - a.jami || a.model.localeCompare(b.model, undefined, { numeric: true }));
+  const sum = rows.reduce((s, r) => ({ jami: s.jami + r.jami, ketdi: s.ketdi + r.ketdi, qoldi: s.qoldi + r.qoldi }), { jami: 0, ketdi: 0, qoldi: 0 });
+  // Eski «Matras o'lchami» belgisi bo'yicha (sklad modelisiz yozilgan zakazlar)
+  const eski = {};
+  loads.forEach((l) => { if (l.sana >= from && l.sana <= to && l.matras?.bor) eski[l.matras.turi || 'Matras'] = (eski[l.matras.turi || 'Matras'] || 0) + 1; });
+  return { rows, orders, sum, eski };
+}
+const matYetmaydi = (r) => (r.skladda === null ? r.qoldi : Math.max(0, r.qoldi - r.skladda));
+
+function matrasMonthTables(d, forPrint) {
+  const cls = forPrint ? 'print-table' : 'report-table';
+  const sumRows = d.rows.map((r) => {
+    const kam = matYetmaydi(r);
+    return `<tr><td><b>${escapeHtml(r.model)}</b></td><td class="mono">${r.zakaz}</td><td class="mono">${r.jami}</td><td class="mono">${r.ketdi}</td><td class="mono">${r.qoldi}</td><td class="mono">${r.skladda === null ? '—' : r.skladda}${kam ? ` <span class="${forPrint ? '' : 'sk-bad'}">⚠ ${kam} yetmaydi</span>` : ''}</td></tr>`;
+  }).join('');
+  const orderRows = d.orders.map((o) => `<tr><td>${escapeHtml(o.sana)}</td><td>${escapeHtml(o.nomi)}${o.filial ? `<br><span class="muted">${escapeHtml(o.filial)}</span>` : ''}</td><td>${escapeHtml(o.hudud || '—')}</td><td>${escapeHtml(o.model)}</td><td class="mono">${o.soni}</td><td>${o.sent ? '✅ Ketdi' : '📋 Kerak'}</td></tr>`).join('');
+  return `
+    <table class="${cls}"><thead><tr><th>Matras modeli</th><th>Zakazlar</th><th>Jami kerak</th><th>Ketdi</th><th>Hali ketmagan</th><th>Skladda</th></tr></thead>
+      <tbody>${sumRows || '<tr><td colspan="6">Bu davrda matras yozilgan zakaz yo\'q</td></tr>'}</tbody>
+      ${d.rows.length ? `<tfoot><tr><td><b>Jami</b></td><td></td><td class="mono"><b>${d.sum.jami}</b></td><td class="mono"><b>${d.sum.ketdi}</b></td><td class="mono"><b>${d.sum.qoldi}</b></td><td></td></tr></tfoot>` : ''}
+    </table>
+    ${d.orders.length ? `<h4 style="margin:16px 0 6px">Qaysi zakazga qaysi matras</h4>
+    <div class="${forPrint ? '' : 'report-scroll'}"><table class="${cls}"><thead><tr><th>Sana</th><th>Zakaz</th><th>Hudud</th><th>Matras</th><th>Soni</th><th>Holat</th></tr></thead><tbody>${orderRows}</tbody></table></div>` : ''}
+    ${Object.keys(d.eski).length ? `<p class="report-note">Eski «Matras o'lchami» belgisi bo'yicha (sklad modelisiz): ${Object.entries(d.eski).map(([k, v]) => `${escapeHtml(k)} — ${v} ta zakaz`).join(', ')}.</p>` : ''}`;
+}
+
+function renderMatrasMonth() {
+  const box = document.getElementById('matrasMonthReport');
+  if (!box) return;
+  const prev = { from: document.getElementById('matFrom')?.value, to: document.getElementById('matTo')?.value };
+  const from = prev.from || toISO(addDays(new Date(), -29));
+  const to = prev.to || toISO(new Date());
+  const d = matrasMonthData(from, to);
+  box.innerHTML = `
+    <div class="report-print-head">
+      <h3 class="report-subhead" style="margin:0;">🛏 Matras — 1 oylik hisobot</h3>
+      <button class="ghost-btn small-btn" id="matPrintBtn">🖨️ Chop etish</button>
+    </div>
+    <div class="quick-assign-row" style="margin:8px 0">
+      <label>Qaysi sanadan<input type="date" id="matFrom" value="${from}" /></label>
+      <label>Qaysi sanagacha<input type="date" id="matTo" value="${to}" /></label>
+    </div>
+    <div class="sk-stats">
+      <div class="sk-stat need"><b>${d.sum.jami}</b><span>Jami kerak bo'ldi</span></div>
+      <div class="sk-stat go"><b>${d.sum.ketdi}</b><span>Ketdi</span></div>
+      <div class="sk-stat"><b>${d.sum.qoldi}</b><span>Hali ketmagan</span></div>
+    </div>
+    <div class="report-scroll">${matrasMonthTables(d, false)}</div>
+    <p class="report-note">Standart: oxirgi 30 kun. «Jami kerak» — shu kunlarga yozilgan matraslar, «Ketdi» — «Yuborildi» bo'lganlari, «Hali ketmagan» — hali yuborilmaganlari. Keyingi kunlardagi zakazlarni ko'rish uchun «sanagacha»ni suring.</p>`;
+  const rerender = () => renderMatrasMonth();
+  document.getElementById('matFrom').onchange = rerender;
+  document.getElementById('matTo').onchange = rerender;
+  document.getElementById('matPrintBtn').onclick = () => {
+    const f = document.getElementById('matFrom').value; const t = document.getElementById('matTo').value;
+    const dd = matrasMonthData(f, t);
+    document.getElementById('printArea').innerHTML = `<h1>🛏 Matras hisoboti</h1><p><b>${escapeHtml(f)} — ${escapeHtml(t)}</b></p>
+      <p>Jami kerak: <b>${dd.sum.jami}</b> · Ketdi: <b>${dd.sum.ketdi}</b> · Hali ketmagan: <b>${dd.sum.qoldi}</b></p>${matrasMonthTables(dd, true)}`;
+    window.print();
+  };
+}
+
+// ============================================================
+//  HISOBOT: ZALOG (faqat egasi) — sotuvchilar kesimida
+// ============================================================
+function zalogData(from, to) {
+  const list = loads.filter((l) => l.zalog && l.zalog.summa && (l.zalog.sana || l.sana) >= from && (l.zalog.sana || l.sana) <= to)
+    .sort((a, b) => String(a.zalog.sana || a.sana).localeCompare(String(b.zalog.sana || b.sana)));
+  const bySeller = new Map();
+  list.forEach((l) => {
+    const name = l.sotuvchi?.ism || l.zalog.kim || 'Egasi';
+    if (!bySeller.has(name)) bySeller.set(name, { name, soni: 0, jami: 0 });
+    const r = bySeller.get(name); r.soni += 1; r.jami += Number(l.zalog.summa) || 0;
+  });
+  const jami = list.reduce((s, l) => s + (Number(l.zalog.summa) || 0), 0);
+  return { list, sellers: [...bySeller.values()].sort((a, b) => b.jami - a.jami), jami };
+}
+function zalogTables(d, forPrint) {
+  const cls = forPrint ? 'print-table' : 'report-table';
+  const sellerRows = d.sellers.map((s) => `<tr><td><b>${escapeHtml(s.name)}</b></td><td class="mono">${s.soni}</td><td class="mono">${fmtMoney(s.jami)}</td></tr>`).join('');
+  const rows = d.list.map((l) => `<tr><td>${escapeHtml(l.zalog.sana || '')}</td><td>${escapeHtml(l.sotuvchi?.ism || l.zalog.kim || 'Egasi')}</td><td>${escapeHtml(l.nomi || '—')}${l.filial?.nomi ? `<br><span class="muted">${escapeHtml(l.filial.nomi)}</span>` : ''}</td><td>${escapeHtml(l.sana)}</td><td class="mono">${fmtMoney(l.zalog.summa)}</td><td>${escapeHtml(l.zalog.izoh || '')}</td></tr>`).join('');
+  return `
+    <table class="${cls}"><thead><tr><th>Sotuvchi</th><th>Zakazlar</th><th>Zalog yig'indisi</th></tr></thead>
+      <tbody>${sellerRows || '<tr><td colspan="3">Bu davrda zalog yo\'q</td></tr>'}</tbody>
+      ${d.sellers.length ? `<tfoot><tr><td><b>Jami</b></td><td></td><td class="mono"><b>${fmtMoney(d.jami)}</b></td></tr></tfoot>` : ''}
+    </table>
+    ${d.list.length ? `<h4 style="margin:16px 0 6px">Zalog yozuvlari</h4><div class="${forPrint ? '' : 'report-scroll'}"><table class="${cls}"><thead><tr><th>Zalog sanasi</th><th>Sotuvchi</th><th>Zakaz</th><th>Jo'natish</th><th>Summa</th><th>Izoh</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}`;
+}
+function renderZalogReport() {
+  const box = document.getElementById('zalogReport');
+  if (!box || !isOwner()) return;
+  const from = document.getElementById('zalFrom')?.value || toISO(addDays(new Date(), -29));
+  const to = document.getElementById('zalTo')?.value || toISO(new Date());
+  const d = zalogData(from, to);
+  box.innerHTML = `
+    <div class="report-print-head">
+      <h3 class="report-subhead" style="margin:0;">💵 Zalog hisoboti (sotuvchilar)</h3>
+      <button class="ghost-btn small-btn" id="zalPrintBtn">🖨️ Chop etish</button>
+    </div>
+    <div class="quick-assign-row" style="margin:8px 0">
+      <label>Qaysi sanadan<input type="date" id="zalFrom" value="${from}" /></label>
+      <label>Qaysi sanagacha<input type="date" id="zalTo" value="${to}" /></label>
+    </div>
+    <div class="report-scroll">${zalogTables(d, false)}</div>
+    <p class="report-note">Zalog sotuvchi zakazni yuborgan kunga yoziladi va faqat tasdiqlangan zakazlar hisoblanadi. Bu ma'lumotni xodimlar, zborshik va shafyorlar ko'rmaydi. Excel faylda ham «Zalog» varag'i bor.</p>`;
+  document.getElementById('zalFrom').onchange = renderZalogReport;
+  document.getElementById('zalTo').onchange = renderZalogReport;
+  document.getElementById('zalPrintBtn').onclick = () => {
+    const f = document.getElementById('zalFrom').value; const t = document.getElementById('zalTo').value;
+    const dd = zalogData(f, t);
+    document.getElementById('printArea').innerHTML = `<h1>💵 Zalog hisoboti</h1><p><b>${escapeHtml(f)} — ${escapeHtml(t)}</b></p>${zalogTables(dd, true)}`;
+    window.print();
+  };
+}
+
 // ---------------- Boot ----------------
 async function refresh() { await Promise.all([fetchLoads(), fetchSklad().catch(() => {})]); renderWeekLabel(); renderBoard(); }
 async function boot() {
@@ -1842,6 +2195,7 @@ async function boot() {
   if (!hasPerm('team')) document.getElementById('teamBtn').style.display = 'none';
   if (me.role === 'zborshik') { location.href = '/zborshik.html'; return; }
   if (me.role === 'labo') { location.href = '/labo.html'; return; }
+  if (me.role === 'sotuvchi') { location.href = '/sotuvchi.html'; return; }
   document.getElementById('userName').textContent = `${me.name}${isOwner() ? ' (egasi)' : ''}`;
   if (me.role === 'ishchi') initNotifs(); // bildirishnomalar faqat xodimlarga
   if (!hasPerm('add')) {
@@ -1852,11 +2206,13 @@ async function boot() {
   await fetchLabolar();
   await fetchFiliallar();
   await fetchStaff();
+  await fetchSellers();
   await fetchSklad().catch(() => {});
   populateCategories('');
   populateZborshiklar(zborshikSelect, '');
   populateLabolar(laboSelect, '');
   populateFiliallar(filialSelect, '');
   await refresh();
+  if (isOwner()) initPending(); // sotuvchilardan kelgan zakazlar faqat egasiga
 }
 boot().catch(() => showToast('Serverga ulanishda xatolik', true));

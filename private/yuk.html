@@ -44,6 +44,7 @@
 
   <div class="topbar-actions">
     <button id="settingsBtn" class="ghost-btn" style="display:none" title="Amal kodi va o'chirish kodini o'rnatish">⚙️ Sozlamalar</button>
+    <button id="pendingBtn" class="ghost-btn bell-btn" style="display:none" title="Sotuvchilar yuborgan, tasdiqlanishi kutilayotgan zakazlar">📥 Zakazlar<span id="pendingBadge" class="bell-badge hidden">0</span></button>
     <button id="bellBtn" class="ghost-btn bell-btn" style="display:none" title="Bildirishnomalar">🔔<span id="bellBadge" class="bell-badge hidden">0</span></button>
     <button id="skladBtn" class="ghost-btn">🏬 Sklad</button>
     <button id="teamBtn" class="ghost-btn">👥 Jamoa</button>
@@ -156,6 +157,17 @@
         </label>
       </div>
 
+      <div id="zalogRow" style="display:none">
+        <div class="field-row">
+          <label>💵 Zalog (so'm) — faqat egasi va sotuvchi ko'radi
+            <input type="number" id="f_zalog" min="0" placeholder="masalan: 500000" />
+          </label>
+          <label>Zalog izohi
+            <input type="text" id="f_zalogIzoh" maxlength="200" placeholder="masalan: naqd, chek №15" />
+          </label>
+        </div>
+      </div>
+
       <div class="section-label">Mijoz telefonlari</div>
       <div class="field-row">
         <label>1-nomer
@@ -265,6 +277,10 @@
         <div class="section-label" style="margin-top:20px">🔑 Xodimlar (login-parol bilan kiradiganlar)</div>
         <div id="teamStaffList" class="team-list"></div>
         <button class="ghost-btn" id="teamAddStaffBtn">➕ Yangi xodim (login-parol)</button>
+
+        <div class="section-label" style="margin-top:20px">🛍 Sotuvchilar (do'kon) — zakaz yuboradi, zalog kiritadi</div>
+        <div id="teamSellerList" class="team-list"></div>
+        <button class="ghost-btn" id="teamAddSellerBtn">➕ Yangi sotuvchi (login-parol)</button>
       </div>
 
       <div class="section-label" style="margin-top:20px">🧰 Zborshiklar</div>
@@ -317,6 +333,72 @@
         <button type="submit" class="primary-btn">Saqlash</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- ============ SOTUVCHI (DO'KON) MODAL ============ -->
+<div id="sellerModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="sellerModalTitle">Yangi sotuvchi</h2>
+      <button class="icon-btn close-modal">✕</button>
+    </div>
+    <form id="sellerForm" class="modal-body">
+      <div class="field-row">
+        <label>Ismi
+          <input type="text" id="se_name" placeholder="masalan: Dilnoza" required />
+        </label>
+      </div>
+      <div class="field-row">
+        <label>Login
+          <input type="text" id="se_login" placeholder="dilnoza01" autocomplete="off" autocapitalize="none" required />
+        </label>
+        <label>Parol
+          <input type="text" id="se_password" placeholder="kamida 6 belgi" autocomplete="off" />
+        </label>
+      </div>
+      <div class="section-label">Ruxsat</div>
+      <div class="perm-list">
+        <label class="checkbox-label"><input type="checkbox" id="se_perm_add" checked /> Zakaz qo'shish (yuk yuborish)</label>
+      </div>
+      <label class="checkbox-label" id="se_active_row" style="margin-top:12px;display:none"><input type="checkbox" id="se_active" checked /> Kirishi yoqilgan</label>
+      <p class="muted-note">Sotuvchi yuborgan zakaz avval «📥 Zakazlar» oynangizga tushadi. Siz tekshirib tasdiqlaganingizdan keyingina jadvalga qo'shiladi. Zalogni faqat siz va shu zakazni yuborgan sotuvchi ko'radi.</p>
+      <p class="form-error" id="sellerError"></p>
+      <div class="modal-actions">
+        <button type="button" class="danger-btn" id="sellerDeleteBtn" style="display:none">O'chirish</button>
+        <button type="button" class="ghost-btn close-modal">Bekor qilish</button>
+        <button type="submit" class="primary-btn">Saqlash</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ KUTILAYOTGAN ZAKAZLAR (sotuvchilardan) ============ -->
+<div id="pendingModal" class="modal-overlay hidden">
+  <div class="modal report-modal">
+    <div class="modal-head">
+      <h2>📥 Tasdiqlanishi kutilayotgan zakazlar</h2>
+      <button class="icon-btn close-modal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="pendingList"></div>
+      <p class="muted-note">Zakazni bosib oching, tekshiring va ✔ tasdiqlang yoki tahrirlab tasdiqlang. Tasdiqlangach u jadvalga qo'shiladi, zalog esa hisobotlarga yoziladi.</p>
+    </div>
+  </div>
+</div>
+
+<div id="pendingViewModal" class="modal-overlay hidden" style="z-index:950">
+  <div class="modal view-modal">
+    <div class="modal-head">
+      <h2 id="pvTitle">Zakaz</h2>
+      <button class="icon-btn pv-close" type="button">✕</button>
+    </div>
+    <div class="modal-body" id="pvBody"></div>
+    <div class="modal-actions">
+      <button class="danger-btn" id="pvRejectBtn">✖ Rad etish</button>
+      <button class="ghost-btn" id="pvEditBtn">✏️ Tahrirlab tasdiqlash</button>
+      <button class="primary-btn" id="pvApproveBtn">✔ Tasdiqlash</button>
+    </div>
   </div>
 </div>
 

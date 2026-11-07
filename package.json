@@ -1,6 +1,6 @@
 {
   "name": "yuk-manifest",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Yuk Manifest — Google orqali ro'yxatdan o'tish, ishchi va zborshik loginlari bilan",
   "main": "server.js",
   "engines": { "node": ">=18" },

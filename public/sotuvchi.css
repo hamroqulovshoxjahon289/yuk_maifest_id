@@ -1,0 +1,16 @@
+.s-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 8px; }
+.s-stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+.s-stat b { display: block; font-family: 'JetBrains Mono', monospace; font-size: 17px; }
+.s-stat span { font-size: 11px; color: var(--text-dim); }
+.s-stat.zal b { color: var(--paid); }
+.s-sec { margin: 22px 0 10px; font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); }
+.s-sec.bad { color: var(--red); }
+.s-sec.ok { color: var(--green); }
+.s-card.pend { border-left-color: var(--yellow); }
+.s-card.rad { border-left-color: var(--red); }
+.s-card.acc { border-left-color: var(--green); }
+.s-zalog { display: inline-block; background: #a78bfa22; color: var(--paid); border: 1px solid #a78bfa66; border-radius: 8px; padding: 3px 9px; font-weight: 800; font-size: 13px; }
+.s-reason { background: #ff5c5c14; border: 1px solid #ff5c5c55; color: var(--red); border-radius: 8px; padding: 8px 10px; font-size: 13px; margin: 8px 0; }
+.s-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.s-items div { padding: 2px 0; }
+.sk-picked { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }

@@ -1,37 +1,58 @@
 [
   {
-    "id": "f2c000da-27fd-4aba-82db-639aa254fe3d",
+    "id": "b3ad2cbf-a3a0-4d3c-ba42-cc9b397e8c84",
     "role": "owner",
     "name": "Shoxjahon Hamroqulov",
     "email": "hamroqulovshoxjahon43@gmail.com",
     "googleSub": "109695344448480243119",
     "active": true,
     "tokenVersion": 0,
-    "createdAt": "2026-11-06T16:28:20.604Z",
-    "ownerId": "f2c000da-27fd-4aba-82db-639aa254fe3d"
+    "createdAt": "2026-11-07T07:28:12.411Z",
+    "ownerId": "b3ad2cbf-a3a0-4d3c-ba42-cc9b397e8c84"
   },
   {
-    "id": "21da98b2-aba3-4658-a6f3-50a9f0c458fd",
-    "role": "zborshik",
-    "ownerId": "f2c000da-27fd-4aba-82db-639aa254fe3d",
-    "name": "geni",
-    "zborshikId": "2c1e6302-ad8f-4465-a39d-b7e22947a307",
-    "login": "geni",
-    "passHash": "scrypt$bedd219418d364c7ddbf9fd91b8342a7$0db7aa9f1e213511851503cbb15a2ec30302989ea5ecca3575cd4f22ca91534e8baaf4f8d6661c146b2ceb71bf54ff3c27306df6389020e3e0f2f1b0d51f5484",
-    "active": true,
-    "tokenVersion": 0,
-    "createdAt": "2026-11-06T16:32:24.572Z"
-  },
-  {
-    "id": "0708a41f-36cd-4655-a686-831ea61991a2",
-    "role": "labo",
-    "ownerId": "f2c000da-27fd-4aba-82db-639aa254fe3d",
+    "id": "7832a6da-2947-4e5a-88e8-a5fc01bf7861",
+    "role": "sotuvchi",
+    "ownerId": "b3ad2cbf-a3a0-4d3c-ba42-cc9b397e8c84",
     "name": "aziz",
-    "laboId": "d23d2b2b-7416-49ba-b318-df92d55b098f",
     "login": "aziz",
-    "passHash": "scrypt$0490917c1c000ab51798da9f4d5804be$82fad6f8db9fb45e894ef3eda0f3f0bac8879cbf25f0b3587e33a4d59eddc4e8a58825cfb4cdd38b8413622324f254bcded3ccfaa168d742c10584b030276e8e",
+    "passHash": "scrypt$091fe86317a86daf4f3ea78ecf41aaf3$5ce4134add8c0b8e0ece96c068b9e6bbc973d70c58ce5c497048a6710e23137bcd52e0fcbb688014ea071032d82dfa9ebbe5d76d208c532bec55e4638d854446",
     "active": true,
     "tokenVersion": 0,
-    "createdAt": "2026-11-06T16:32:38.081Z"
+    "perms": {
+      "add": true
+    },
+    "createdAt": "2026-11-07T07:29:17.852Z"
+  },
+  {
+    "id": "a90bd33a-b340-4f7e-ade9-563f5490c220",
+    "role": "zborshik",
+    "ownerId": "b3ad2cbf-a3a0-4d3c-ba42-cc9b397e8c84",
+    "name": "muxammad",
+    "zborshikId": "fb4f1657-e1ad-49b5-9ab4-599f5b51d82f",
+    "login": "geni12",
+    "passHash": "scrypt$5c31f91e9e6f95e8daa7b550cd5f40c5$f2b5588ce02ec67b5b68c32de71f1edbcf8bbf4ca0c63ea6fdd3a9ec991b8159ea7e6eed2f57f86a42e58fa76ac03bc66ece290dee1deb44c2db31cdfa550385",
+    "active": true,
+    "tokenVersion": 0,
+    "createdAt": "2026-11-07T07:29:35.117Z"
+  },
+  {
+    "id": "3746a98a-ac72-4f31-b1e3-a6b0bc8de45d",
+    "role": "ishchi",
+    "ownerId": "b3ad2cbf-a3a0-4d3c-ba42-cc9b397e8c84",
+    "name": "shorux",
+    "login": "shorux12",
+    "passHash": "scrypt$35d8b2ff81564b51c567b309ac6bd44a$ee3a2b03e342048bbc052cfbf8fd9cde846b38c568dd12574007a0229022a1324c92ab4cf62adefaa16b45bf7045637850dbb3361b2c4dab1f04b5f1873b2acc",
+    "active": true,
+    "tokenVersion": 1,
+    "perms": {
+      "add": true,
+      "edit": true,
+      "pay": false,
+      "delete": false,
+      "reorder": false,
+      "team": false
+    },
+    "createdAt": "2026-11-07T07:29:57.503Z"
   }
 ]

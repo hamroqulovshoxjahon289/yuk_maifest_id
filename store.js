@@ -37,6 +37,7 @@ function createStore(dataDir) {
       sklad: path.join(dir, 'sklad.json'),
       skladImg: path.join(dir, 'sklad-img'),
       bildirishnoma: path.join(dir, 'bildirishnomalar.json'),
+      pending: path.join(dir, 'kutilayotgan.json'),
     };
   }
 

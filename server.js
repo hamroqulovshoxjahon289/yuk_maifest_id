@@ -112,6 +112,7 @@ function clearSession(res) {
 function homeFor(u) {
   if (u.role === 'zborshik') return '/zborshik.html';
   if (u.role === 'labo') return '/labo.html';
+  if (u.role === 'sotuvchi') return '/sotuvchi.html';
   return '/yuk.html';
 }
 
@@ -132,6 +133,8 @@ const ownerOnly = requireRole('owner');
 // reorder (zakaz tartibini almashtirish), team (jamoani boshqarish). Egasida hammasi bor.
 // Eski xodimlarda 'edit' yo'q bo'lsa, 'add' ruxsati bilan bir xil deb olinadi.
 function effectivePerms(u) {
+  // Sotuvchi (do'kon): faqat "add" (zakaz yuborish) ruxsatini egasi beradi, qolganlari yo'q
+  if (u.role === 'sotuvchi') return { add: !!(u.perms && u.perms.add), edit: false, pay: false, delete: false, reorder: false, team: false };
   if (u.role === 'owner') return { add: true, edit: true, pay: true, delete: true, reorder: true, team: true };
   const p = u.perms || {};
   return {
@@ -200,6 +203,7 @@ app.get('/', (req, res) => {
 app.get('/yuk.html', pageGuard(['owner', 'ishchi'], 'yuk.html'));
 app.get('/zborshik.html', pageGuard(['zborshik'], 'zborshik.html'));
 app.get('/labo.html', pageGuard(['labo'], 'labo.html'));
+app.get('/sotuvchi.html', pageGuard(['sotuvchi'], 'sotuvchi.html'));
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // ============================================================
@@ -402,13 +406,27 @@ function readTaxonomy(p) {
 function totalPaid(l) {
   return (l.tolovlar || []).reduce((sum, t) => sum + (Number(t.summa) || 0), 0);
 }
-function publicLoad(l) {
-  const { pin, skladCutItems, ...rest } = l; // eski PIN va ichki sklad nusxasi hech qachon yuborilmaydi
+function publicLoad(l, user) {
+  const { pin, skladCutItems, zalog, ...rest } = l; // eski PIN va ichki sklad nusxasi hech qachon yuborilmaydi
   const jamiTolangan = totalPaid(l);
-  return { ...rest, jamiTolangan, qoldiq: Math.max(0, (Number(l.astatka) || 0) - jamiTolangan) };
+  const out = { ...rest, jamiTolangan, qoldiq: Math.max(0, (Number(l.astatka) || 0) - jamiTolangan) };
+  // Zalog faqat egasiga ko'rinadi (xodim, zborshik, labo ko'rmaydi). Sotuvchi o'z zalogini alohida endpoint orqali ko'radi.
+  if (user && user.role === 'owner' && zalog) out.zalog = zalog;
+  return out;
 }
 
-function buildWorkbook(loads) {
+function httpFail(status, message) { const e = new Error(message); e.status = status; return e; }
+// Zalog (garov/oldindan olingan pul): summa bo'sh yoki 0 bo'lsa — zalog yo'q
+function makeZalog(summa, izoh, kim) {
+  if (summa === undefined || summa === null || String(summa).trim() === '') return null;
+  const n = Math.round(Number(String(summa).replace(/\s/g, '')));
+  if (!Number.isFinite(n) || n < 0) throw httpFail(400, "Zalog summasini to'g'ri kiriting");
+  if (n === 0) return null;
+  if (n > 1e12) throw httpFail(400, 'Zalog summasi juda katta');
+  return { summa: n, izoh: String(izoh || '').trim().slice(0, 200), sana: todayStr(), kim: kim || '' };
+}
+
+function buildWorkbook(loads, withZalog) {
     try {
         const wb = XLSX.utils.book_new();
 
@@ -441,6 +459,7 @@ function buildWorkbook(loads) {
                 "Qoldiq": qoldiq,
                 "To'landimi": l.tolandi ? "To'liq to'landi" : (jamiTolangan > 0 ? 'Qisman to\'landi' : "Yo'q"),
                 'Yaratilgan': l.createdAt || '',
+                ...(withZalog ? { 'Sotuvchi': l.sotuvchi?.ism || '', 'Zalog': l.zalog?.summa || 0, 'Zalog izohi': l.zalog?.izoh || '' } : {}),
             };
         });
         const sheet = XLSX.utils.json_to_sheet(rows);
@@ -504,6 +523,25 @@ function buildWorkbook(loads) {
         kassaSheet['!cols'] = [{ wch: 13 }, { wch: 18 }, { wch: 14 }, { wch: 20 }, { wch: 14 }];
         if (kassaSheet['!ref']) kassaSheet['!autofilter'] = { ref: kassaSheet['!ref'] };
         XLSX.utils.book_append_sheet(wb, kassaSheet, 'Kassa');
+
+        // ---------- 5-VARAQ: Zalog hisoboti (faqat egasi uchun) ----------
+        if (withZalog) {
+            const zRows = loads.filter((l) => l.zalog && l.zalog.summa).map((l) => ({
+                'Zalog sanasi': l.zalog.sana || '',
+                'Sotuvchi': l.sotuvchi?.ism || l.zalog.kim || '',
+                'Buyurtma': l.nomi || '',
+                'Filial': l.filial?.nomi || '',
+                'Jo\'natish sanasi': l.sana,
+                'Zalog summasi': Number(l.zalog.summa) || 0,
+                'Izoh': l.zalog.izoh || '',
+            }));
+            zRows.sort((a, b) => String(a['Zalog sanasi']).localeCompare(String(b['Zalog sanasi'])));
+            const jamiZalog = zRows.reduce((sum, r) => sum + r['Zalog summasi'], 0);
+            zRows.push({ 'Zalog sanasi': '', 'Sotuvchi': '', 'Buyurtma': '', 'Filial': '', 'Jo\'natish sanasi': 'JAMI:', 'Zalog summasi': jamiZalog, 'Izoh': '' });
+            const zSheet = XLSX.utils.json_to_sheet(zRows);
+            zSheet['!cols'] = [{ wch: 13 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 15 }, { wch: 26 }];
+            XLSX.utils.book_append_sheet(wb, zSheet, 'Zalog');
+        }
 
         return wb;
     } catch (err) {
@@ -780,7 +818,7 @@ function skladError(res, e) {
 app.get('/api/loads', requireAuth, staffOnly, (req, res) => {
   const loads = readLoads(req.paths);
   if (normalizeOrder(loads)) writeLoads(req.paths, loads); // eski zakazlarga ham tartib raqami beriladi
-  res.json(loads.map(publicLoad));
+  res.json(loads.map((l) => publicLoad(l, req.user)));
 });
 
 // Zborshik va labo (shafyor) faqat o'ziga biriktirilgan zakazlarni ko'radi (hamma ma'lumoti bilan)
@@ -791,7 +829,7 @@ app.get('/api/my-loads', requireAuth, requireRole('zborshik', 'labo'), (req, res
     : l.zborshik && l.zborshik.id === req.user.zborshikId));
   mine.sort((a, b) => String(a.sana).localeCompare(String(b.sana)) || ((a.tartib ?? 1e8) - (b.tartib ?? 1e8)));
   // Surat belgisi faqat zborshikka beriladi (labo ko'rmaydi)
-  res.json((isLabo ? mine : sklad.withPhotoFlags(req.paths, mine)).map(publicLoad));
+  res.json((isLabo ? mine : sklad.withPhotoFlags(req.paths, mine)).map((l) => publicLoad(l, req.user)));
 });
 
 function resolveMatras(kategoriyaNomi, input) {
@@ -812,20 +850,21 @@ function snapFilial(p, id) {
   return f ? { id: f.id, nomi: f.nomi } : null;
 }
 
-app.post('/api/loads', requireAuth, staffOnly, can('add'), actionCode, (req, res) => {
-  const { sana, holat, kategoriyaId, nomi, matras, izoh, manzil, astatka, tel1, tel2, zborshikId, laboId, filialId, skladItems, force } = req.body;
-  let items = [];
-  try { items = sklad.normalizeItems(req.paths, skladItems); } catch (e) { return skladError(res, e); }
+// Yangi yukni qo'shishning umumiy qismi: egasi/xodim formasi ham, sotuvchi zakazini tasdiqlash ham shuni ishlatadi.
+// Xato bo'lsa .status bilan Error tashlaydi (skladError uni javobga aylantiradi).
+function addLoadCore(req, b, extra = {}) {
+  const { sana, holat, kategoriyaId, nomi, matras, izoh, manzil, astatka, tel1, tel2, zborshikId, laboId, filialId, skladItems, force } = b;
+  const items = sklad.normalizeItems(req.paths, skladItems);
   const nomiFinal = String(nomi || '').trim() || sklad.autoNomi(items);
   if (!sana || !kategoriyaId || !nomiFinal) {
-    return res.status(400).json({ error: 'Sana, kategoriya va nomi (yoki sklad mahsuloti) majburiy' });
+    throw httpFail(400, 'Sana, kategoriya va nomi (yoki sklad mahsuloti) majburiy');
   }
   const loads = readLoads(req.paths);
   if (loads.filter((l) => l.sana === sana).length >= MAX_PER_DAY) {
-    return res.status(400).json({ error: `Bu kunga zakazlar to'ldi (kuniga maksimum ${MAX_PER_DAY} ta)` });
+    throw httpFail(400, `Bu kunga zakazlar to'ldi (kuniga maksimum ${MAX_PER_DAY} ta)`);
   }
   const cat = readTaxonomy(req.paths).find((c) => c.id === kategoriyaId);
-  if (!cat) return res.status(400).json({ error: 'Kategoriya topilmadi' });
+  if (!cat) throw httpFail(400, 'Kategoriya topilmadi');
 
   const newLoad = {
     id: crypto.randomUUID(),
@@ -845,21 +884,33 @@ app.post('/api/loads', requireAuth, staffOnly, can('add'), actionCode, (req, res
     zborshik: zborshikId ? snapZborshik(req.paths, zborshikId) : null,
     labo: laboId ? snapLabo(req.paths, laboId) : null,
     filial: filialId ? snapFilial(req.paths, filialId) : null,
-    yaratdi: req.user.name,
+    yaratdi: extra.sotuvchi ? extra.sotuvchi.ism : req.user.name,
     tolovlar: [],
     tolandi: false,
     tartib: NEW_LAST, // kunning oxirgi raqamini oladi
     createdAt: new Date().toISOString(),
   };
-  try { sklad.syncLoadStock(req.paths, newLoad, { force: !!force, kim: req.user.name, today: todayStr() }); } catch (e) { return skladError(res, e); }
+  if (extra.sotuvchi) newLoad.sotuvchi = { id: extra.sotuvchi.id, ism: extra.sotuvchi.ism };
+  if (extra.zalog) newLoad.zalog = extra.zalog;
+  sklad.syncLoadStock(req.paths, newLoad, { force: !!force, kim: req.user.name, today: todayStr() });
   loads.push(newLoad);
   normalizeOrder(loads);
   writeLoads(req.paths, loads);
-  // Egasi (admin) zakaz qo'shsa — xodimlarga bildirishnoma (zborshik/shafyorlarga emas)
+  // Egasi (admin) zakaz qo'shsa (yoki sotuvchi zakazini tasdiqlasa) — xodimlarga bildirishnoma (zborshik/shafyorlarga emas)
   if (req.user.role === 'owner') {
-    try { notify.loadAdded(req.paths, req.ownerId, newLoad, req.user.name); } catch (e) { console.error('Bildirishnoma xatosi:', e.message); }
+    try { notify.loadAdded(req.paths, req.ownerId, newLoad, newLoad.yaratdi); } catch (e) { console.error('Bildirishnoma xatosi:', e.message); }
   }
-  res.json(publicLoad(newLoad));
+  return newLoad;
+}
+
+app.post('/api/loads', requireAuth, staffOnly, can('add'), actionCode, (req, res) => {
+  let newLoad;
+  try {
+    // Zalog faqat egasi kirita oladi (xodimniki e'tiborga olinmaydi)
+    const zalog = req.user.role === 'owner' ? makeZalog(req.body.zalogSumma, req.body.zalogIzoh, req.user.name) : null;
+    newLoad = addLoadCore(req, req.body, { zalog });
+  } catch (e) { return skladError(res, e); }
+  res.json(publicLoad(newLoad, req.user));
 });
 
 app.put('/api/loads/:id', requireAuth, staffOnly, can('edit'), actionCode, (req, res) => {
@@ -902,11 +953,20 @@ app.put('/api/loads/:id', requireAuth, staffOnly, can('edit'), actionCode, (req,
     labo: laboId !== undefined ? (laboId ? (snapLabo(req.paths, laboId) || loads[idx].labo) : null) : loads[idx].labo,
     filial: filialId !== undefined ? (filialId ? (snapFilial(req.paths, filialId) || loads[idx].filial) : null) : loads[idx].filial,
   };
+  if (req.user.role === 'owner' && req.body.zalogSumma !== undefined) {
+    try {
+      const z = makeZalog(req.body.zalogSumma, req.body.zalogIzoh, req.user.name);
+      const old = loads[idx].zalog;
+      if (z && old) { z.sana = old.sana || z.sana; z.kim = old.kim || z.kim; } // zalog sanasi/kim o'zgarmaydi
+      loads[idx].zalog = z || undefined;
+      if (!z) delete loads[idx].zalog;
+    } catch (e) { return skladError(res, e); }
+  }
   if (loads[idx].sana !== oldSana) loads[idx].tartib = NEW_LAST; // boshqa kunga o'tdi — o'sha kunning oxiriga
   try { sklad.syncLoadStock(req.paths, loads[idx], { force: !!force, kim: req.user.name, today: todayStr() }); } catch (e) { return skladError(res, e); }
   normalizeOrder(loads);
   writeLoads(req.paths, loads);
-  res.json(publicLoad(loads[idx]));
+  res.json(publicLoad(loads[idx], req.user));
 });
 
 // Zborshik / labo / filial / holatni tezkor almashtirish (ishchi ham qila oladi)
@@ -921,7 +981,7 @@ app.put('/api/loads/:id/assign', requireAuth, staffOnly, can('edit'), (req, res)
   if (holat !== undefined && HOLATLAR.includes(holat)) loads[idx].holat = holat;
   try { sklad.syncLoadStock(req.paths, loads[idx], { force: !!force, kim: req.user.name, today: todayStr() }); } catch (e) { return skladError(res, e); }
   writeLoads(req.paths, loads);
-  res.json(publicLoad(loads[idx]));
+  res.json(publicLoad(loads[idx], req.user));
 });
 
 // Zakazni kun ichida boshqa raqamga ko'chirish: qolganlari siljiydi (3 ga qo'ysangiz, oldingi 3 → 4, 4 → 5 ...)
@@ -938,7 +998,7 @@ app.put('/api/loads/:id/move', requireAuth, staffOnly, can('reorder'), (req, res
   rest.splice(pos - 1, 0, load);
   rest.forEach((l, i) => { l.tartib = i + 1; });
   writeLoads(req.paths, loads);
-  res.json(publicLoad(load));
+  res.json(publicLoad(load, req.user));
 });
 
 app.put('/api/loads/:id/pay', requireAuth, staffOnly, can('pay'), payCode, (req, res) => {
@@ -952,7 +1012,7 @@ app.put('/api/loads/:id/pay', requireAuth, staffOnly, can('pay'), payCode, (req,
   loads[idx].tolovlar.push({ sana: todayStr(), summa: amount, kim: req.user.name });
   if (totalPaid(loads[idx]) >= (Number(loads[idx].astatka) || 0)) loads[idx].tolandi = true;
   writeLoads(req.paths, loads);
-  res.json(publicLoad(loads[idx]));
+  res.json(publicLoad(loads[idx], req.user));
 });
 
 app.put('/api/loads/:id/unpay', requireAuth, staffOnly, can('pay'), payCode, (req, res) => {
@@ -962,7 +1022,7 @@ app.put('/api/loads/:id/unpay', requireAuth, staffOnly, can('pay'), payCode, (re
   loads[idx].tolovlar = [];
   loads[idx].tolandi = false;
   writeLoads(req.paths, loads);
-  res.json(publicLoad(loads[idx]));
+  res.json(publicLoad(loads[idx], req.user));
 });
 
 app.delete('/api/loads/:id', requireAuth, staffOnly, can('delete'), deleteCode, (req, res) => {
@@ -976,8 +1036,238 @@ app.delete('/api/loads/:id', requireAuth, staffOnly, can('delete'), deleteCode, 
   res.json({ ok: true });
 });
 
+// ============================================================
+//  SOTUVCHILAR (do'kon) — egasi login-parol beradi
+// ============================================================
+function publicSeller(u) {
+  return { id: u.id, name: u.name, login: u.login, active: u.active !== false, perms: { add: !!(u.perms && u.perms.add) }, createdAt: u.createdAt };
+}
+const sellersOf = (ownerId) => store.users().filter((u) => u.role === 'sotuvchi' && u.ownerId === ownerId);
+
+app.get('/api/sotuvchilar', requireAuth, ownerOnly, (req, res) => res.json(sellersOf(req.ownerId).map(publicSeller)));
+
+app.post('/api/sotuvchilar', requireAuth, ownerOnly, (req, res) => {
+  const name = String(req.body.name || '').trim();
+  if (!name) return res.status(400).json({ error: 'Sotuvchi ismini kiriting' });
+  const l = validateLogin(req.body.login);
+  if (l.error) return res.status(400).json({ error: l.error });
+  const p = validatePassword(req.body.password);
+  if (p.error) return res.status(400).json({ error: p.error });
+  const user = {
+    id: crypto.randomUUID(), role: 'sotuvchi', ownerId: req.ownerId, name, login: l.value,
+    passHash: hashPassword(p.value), active: true, tokenVersion: 0,
+    perms: { add: req.body.perms ? !!req.body.perms.add : true },
+    createdAt: new Date().toISOString(),
+  };
+  store.users().push(user);
+  store.saveUsers();
+  res.json(publicSeller(user));
+});
+
+app.put('/api/sotuvchilar/:id', requireAuth, ownerOnly, (req, res) => {
+  const u = sellersOf(req.ownerId).find((x) => x.id === req.params.id);
+  if (!u) return res.status(404).json({ error: 'Sotuvchi topilmadi' });
+  if (req.body.name !== undefined) {
+    const name = String(req.body.name).trim();
+    if (!name) return res.status(400).json({ error: "Ism bo'sh bo'lmasin" });
+    u.name = name;
+  }
+  if (req.body.login !== undefined && String(req.body.login).trim().toLowerCase() !== u.login) {
+    const l = validateLogin(req.body.login, u.id);
+    if (l.error) return res.status(400).json({ error: l.error });
+    u.login = l.value;
+    u.tokenVersion = (u.tokenVersion || 0) + 1;
+  }
+  if (req.body.password) {
+    const p = validatePassword(req.body.password);
+    if (p.error) return res.status(400).json({ error: p.error });
+    u.passHash = hashPassword(p.value);
+    u.tokenVersion = (u.tokenVersion || 0) + 1;
+  }
+  if (req.body.perms) u.perms = { add: !!req.body.perms.add };
+  if (req.body.active !== undefined) {
+    u.active = !!req.body.active;
+    if (!u.active) u.tokenVersion = (u.tokenVersion || 0) + 1;
+  }
+  store.saveUsers();
+  res.json(publicSeller(u));
+});
+
+app.delete('/api/sotuvchilar/:id', requireAuth, ownerOnly, deleteCode, (req, res) => {
+  const users = store.users();
+  const idx = users.findIndex((x) => x.id === req.params.id && x.role === 'sotuvchi' && x.ownerId === req.ownerId);
+  if (idx === -1) return res.status(404).json({ error: 'Sotuvchi topilmadi' });
+  users.splice(idx, 1);
+  store.saveUsers();
+  res.json({ ok: true });
+});
+
+// ============================================================
+//  KUTILAYOTGAN ZAKAZLAR: sotuvchi yuboradi -> egasi tekshirib tasdiqlaydi (✔) yoki tahrirlab tasdiqlaydi
+//  Tasdiqlanmaguncha zakaz jadvalga tushmaydi, skladga ta'sir qilmaydi.
+//  Zalog: faqat egasi va shu zakazni yuborgan sotuvchi ko'radi; egasining hisobotlarida yoziladi.
+// ============================================================
+const readPending = (p) => { const l = store.readJson(p.pending, []); return Array.isArray(l) ? l : []; };
+const writePending = (p, list) => store.writeJson(p.pending, list);
+const sellerOnly = requireRole('sotuvchi');
+const MAX_PENDING_PER_SELLER = 100;
+const cut = (v, n) => String(v ?? '').trim().slice(0, n);
+
+// Sotuvchi yuborgan ma'lumotni tekshirib, saqlanadigan ko'rinishga keltiradi
+function buildPendingDraft(req, b) {
+  const sana = cut(b.sana, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(sana)) throw httpFail(400, "Jo'natish sanasini tanlang");
+  const items = sklad.normalizeItems(req.paths, b.skladItems);
+  const nomi = cut(b.nomi, 120);
+  if (!nomi && !items.length) throw httpFail(400, 'Nomini yozing yoki sklad mahsulotini tanlang');
+  const cat = readTaxonomy(req.paths).find((c) => c.id === b.kategoriyaId);
+  if (!cat) throw httpFail(400, 'Kategoriyani tanlang');
+  const astatka = Number(b.astatka) || 0;
+  if (astatka < 0 || astatka > 1e12) throw httpFail(400, "Astatka summasi noto'g'ri");
+  const zalog = makeZalog(b.zalogSumma, b.zalogIzoh);
+  const m = b.manzil || {};
+  return {
+    sana,
+    kategoriya: { id: cat.id, nomi: cat.name },
+    nomi,
+    skladItems: items,
+    matras: resolveMatras(cat.name, b.matras),
+    izoh: cut(b.izoh, 300),
+    manzil: { hudud: cut(m.hudud, 200), dom: cut(m.dom, 30), padyez: cut(m.padyez, 30), etaj: cut(m.etaj, 30) },
+    astatka,
+    tel1: cut(b.tel1, 30),
+    tel2: cut(b.tel2, 30),
+    filial: b.filialId ? snapFilial(req.paths, b.filialId) : null,
+    zalogSumma: zalog ? zalog.summa : 0,
+    zalogIzoh: zalog ? zalog.izoh : '',
+  };
+}
+// Kutilayotgan zakazni addLoadCore kutadigan "forma" ko'rinishiga qaytaradi
+function pendingToBody(p) {
+  return {
+    sana: p.sana, kategoriyaId: p.kategoriya && p.kategoriya.id, nomi: p.nomi, matras: p.matras, izoh: p.izoh,
+    manzil: p.manzil, astatka: p.astatka, tel1: p.tel1, tel2: p.tel2, filialId: p.filial && p.filial.id,
+    skladItems: (p.skladItems || []).map((i) => ({ modelId: i.modelId, soni: i.soni })),
+    zalogSumma: p.zalogSumma, zalogIzoh: p.zalogIzoh,
+  };
+}
+// Sotuvchiga o'z qabul qilingan zakazi (zalog bilan) ko'rsatiladi — boshqa xodimlarning ma'lumoti emas
+function sellerLoadView(l) {
+  return {
+    id: l.id, sana: l.sana, nomi: l.nomi, kategoriya: l.kategoriya, holat: l.holat, skladItems: l.skladItems || [],
+    manzil: l.manzil, astatka: l.astatka, tel1: l.tel1, tel2: l.tel2, izoh: l.izoh, filial: l.filial,
+    tolandi: !!l.tolandi, tartib: l.tartib, createdAt: l.createdAt, zalog: l.zalog || null,
+  };
+}
+
+app.get('/api/sotuvchi/meta', requireAuth, sellerOnly, (req, res) => {
+  const s = sklad.read(req.paths);
+  res.json({
+    categories: readTaxonomy(req.paths).map((c) => ({ id: c.id, name: c.name })),
+    matrasCategories: MATRAS_CATEGORIES,
+    matrasTypes: MATRAS_TYPES,
+    filiallar: readFiliallar(req.paths),
+    sklad: {
+      yonalishlar: [{ id: 'matras', nomi: 'Matras' }, { id: 'mebel', nomi: 'Mebel' }, { id: 'zapchast', nomi: 'Zapchast' }],
+      categories: s.categories.map((c) => ({ id: c.id, yonalish: c.yonalish, nomi: c.nomi, yashirin: !!c.yashirin })),
+      models: s.models.map((m) => ({ id: m.id, categoryId: m.categoryId, nomi: m.nomi, qoldiq: Number(m.qoldiq) || 0 })),
+    },
+    perms: effectivePerms(req.user),
+  });
+});
+
+app.get('/api/sotuvchi/orders', requireAuth, sellerOnly, (req, res) => {
+  const mine = readPending(req.paths).filter((x) => x.sotuvchi && x.sotuvchi.id === req.user.id);
+  const byNew = (a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+  const accepted = readLoads(req.paths).filter((l) => l.sotuvchi && l.sotuvchi.id === req.user.id).map(sellerLoadView).sort(byNew).slice(0, 300);
+  res.json({
+    pending: mine.filter((x) => x.status === 'kutilmoqda').sort(byNew),
+    rejected: mine.filter((x) => x.status === 'rad').sort(byNew),
+    accepted,
+  });
+});
+
+app.post('/api/sotuvchi/orders', requireAuth, sellerOnly, (req, res) => {
+  if (!effectivePerms(req.user).add) return res.status(403).json({ error: "Sizda zakaz qo'shishga ruxsat yo'q. Egasidan so'rang." });
+  const list = readPending(req.paths);
+  if (list.filter((x) => x.sotuvchi && x.sotuvchi.id === req.user.id).length >= MAX_PENDING_PER_SELLER) {
+    return res.status(400).json({ error: "Ko'rib chiqilmagan zakazlar juda ko'p. Avval egasi ularni ko'rib chiqsin." });
+  }
+  let draft;
+  try { draft = buildPendingDraft(req, req.body); } catch (e) { return skladError(res, e); }
+  const rec = {
+    id: crypto.randomUUID(), status: 'kutilmoqda', createdAt: new Date().toISOString(), kunSana: todayStr(),
+    sotuvchi: { id: req.user.id, ism: req.user.name }, ...draft,
+  };
+  list.push(rec);
+  writePending(req.paths, list);
+  res.json(rec);
+});
+
+// Sotuvchi o'zining hali tasdiqlanmagan (yoki rad etilgan) zakazini tahrirlaydi — rad etilgan bo'lsa, qayta yuboriladi
+app.put('/api/sotuvchi/orders/:id', requireAuth, sellerOnly, (req, res) => {
+  if (!effectivePerms(req.user).add) return res.status(403).json({ error: "Sizda zakaz qo'shishga ruxsat yo'q" });
+  const list = readPending(req.paths);
+  const idx = list.findIndex((x) => x.id === req.params.id && x.sotuvchi && x.sotuvchi.id === req.user.id);
+  if (idx === -1) return res.status(404).json({ error: "Zakaz topilmadi (egasi allaqachon qabul qilgan bo'lishi mumkin)" });
+  let draft;
+  try { draft = buildPendingDraft(req, req.body); } catch (e) { return skladError(res, e); }
+  const old = list[idx];
+  list[idx] = { ...old, ...draft, status: 'kutilmoqda', radSababi: undefined, radVaqt: undefined, yangilandi: new Date().toISOString() };
+  writePending(req.paths, list);
+  res.json(list[idx]);
+});
+
+app.delete('/api/sotuvchi/orders/:id', requireAuth, sellerOnly, (req, res) => {
+  const list = readPending(req.paths);
+  const idx = list.findIndex((x) => x.id === req.params.id && x.sotuvchi && x.sotuvchi.id === req.user.id);
+  if (idx === -1) return res.status(404).json({ error: 'Zakaz topilmadi' });
+  list.splice(idx, 1);
+  writePending(req.paths, list);
+  res.json({ ok: true });
+});
+
+// ---- Egasi tomoni ----
+app.get('/api/pending', requireAuth, ownerOnly, (req, res) => {
+  res.json(readPending(req.paths).filter((x) => x.status === 'kutilmoqda').sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))));
+});
+app.get('/api/pending/count', requireAuth, ownerOnly, (req, res) => {
+  res.json({ count: readPending(req.paths).filter((x) => x.status === 'kutilmoqda').length });
+});
+
+// ✔ Tasdiqlash: body bo'sh bo'lsa — sotuvchi yuborgandek; forma maydonlari kelsa (tahrirlab tasdiqlash) — o'shalar ustun
+app.post('/api/pending/:id/approve', requireAuth, ownerOnly, actionCode, (req, res) => {
+  const list = readPending(req.paths);
+  const idx = list.findIndex((x) => x.id === req.params.id && x.status === 'kutilmoqda');
+  if (idx === -1) return res.status(404).json({ error: "Zakaz topilmadi (allaqachon ko'rib chiqilgan bo'lishi mumkin)" });
+  const p = list[idx];
+  const body = { ...pendingToBody(p), ...req.body };
+  let load;
+  try {
+    const zalog = makeZalog(body.zalogSumma, body.zalogIzoh);
+    if (zalog) { zalog.sana = p.kunSana || zalog.sana; zalog.kim = p.sotuvchi.ism; } // zalog sotuvchi nomi va kiritilgan kuni bilan yoziladi
+    load = addLoadCore(req, body, { sotuvchi: p.sotuvchi, zalog });
+  } catch (e) { return skladError(res, e); }
+  list.splice(idx, 1);
+  writePending(req.paths, list);
+  res.json(publicLoad(load, req.user));
+});
+
+app.post('/api/pending/:id/reject', requireAuth, ownerOnly, (req, res) => {
+  const list = readPending(req.paths);
+  const p = list.find((x) => x.id === req.params.id && x.status === 'kutilmoqda');
+  if (!p) return res.status(404).json({ error: "Zakaz topilmadi (allaqachon ko'rib chiqilgan bo'lishi mumkin)" });
+  p.status = 'rad';
+  p.radSababi = cut(req.body.sabab, 300);
+  p.radVaqt = new Date().toISOString();
+  // Rad etilganlardan 30 kundan eskilarini tozalaymiz
+  const limit = Date.now() - 30 * 86400000;
+  writePending(req.paths, list.filter((x) => x.status !== 'rad' || new Date(x.radVaqt || x.createdAt).getTime() > limit));
+  res.json({ ok: true });
+});
+
 app.get('/api/export/excel', requireAuth, staffOnly, (req, res) => {
-  const wb = buildWorkbook(readLoads(req.paths));
+  const wb = buildWorkbook(readLoads(req.paths), req.user.role === 'owner');
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
   res.set({
     'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

@@ -77,3 +77,34 @@ Birinchi marta `LEGACY_OWNER_EMAIL` dagi Gmail bilan kirganingizda, `DATA_DIR/yu
 - **Matras** yo'nalishida kategoriya yo'q: Sklad → Matras → «➕ Yangi matras modeli». Yuk formasida ham Matras tanlansa, kategoriya so'ralmaydi, modelning o'zi tanlanadi. Mebel va Zapchastda kategoriya avvalgidek. Eski matras kategoriyalaridagi modellar saqlanib qoladi (ro'yxatda tekis ko'rinadi).
 - **Bildirishnoma**: egasi (admin) yangi zakaz qo'shganda barcha faol **xodimlarga** xabar boradi (zborshik va shafyorlarga bormaydi). Xodimda 🔔 tugmasi bor: o'qilmaganlar soni ko'rinadi, bossa ro'yxat ochiladi, xabarni bossa shu zakaz ochiladi. Sahifa ochiq bo'lsa, har 20 soniyada tekshiriladi va ekranda xabar chiqadi (brauzer ruxsat bersa — tizim xabari ham). Xodim zakaz qo'shsa, xabar yuborilmaydi.
 - Ma'lumot `DATA_DIR/yuk-data/owners/<id>/bildirishnomalar.json` da (oxirgi 200 ta).
+
+## 🛏 1 oylik matras hisoboti (yangilanish)
+- **📊 Hisobot** oynasida «🛏 Matras — 1 oylik hisobot»: tanlangan davrda (standart: oxirgi 30 kun) har bir matras modeli bo'yicha **nechta zakazga**, **jami nechta kerak bo'ldi**, **nechtasi ketdi** («Yuborildi»), **nechtasi hali ketmagan**, skladda nechta bor va nechtasi yetmayotgani.
+- Pastida **«Qaysi zakazga qaysi matras»** jadvali: sana, zakaz, hudud, matras, soni, holat (✅ Ketdi / 📋 Kerak).
+- **🖨️ Chop etish** tugmasi: shu hisobotni (umumiy jadval + zakazlar ro'yxati) qog'ozga chiqaradi.
+- «Qaysi sanadan / gacha» maydonlari bilan istalgan davrni (masalan, keyingi kunlarni ham) ko'rish mumkin.
+- Hisob faqat sklad modeli tanlab kiritilgan zakazlardan olinadi. Eski «Matras o'lchami» belgisi bo'yicha zakazlar soni alohida qator qilib ko'rsatiladi.
+
+## 🛍 Sotuvchi (do'kon) roli va zalog (yangilanish)
+| Rol | Qanday kiradi | Nimani qila oladi |
+|---|---|---|
+| **Sotuvchi** | Egasi bergan login-parol | `/sotuvchi.html`: zakaz kiritadi (xuddi egasi formasidek, **zalog** bilan) va egasiga yuboradi. O'zining zakazlarini va zalogini ko'radi |
+
+**Egasi qanday sozlaydi:** 👥 Jamoa → «🛍 Sotuvchilar (do'kon)» → **➕ Yangi sotuvchi**: ism, login, parol. «Zakaz qo'shish» ruxsatini egasi beradi/oladi, kirishni to'xtatish ham mumkin.
+
+**Zakaz yo'li:**
+1. Sotuvchi zakazni to'ldirib **📤 Egasiga yuborish** bosadi. Zakaz hali jadvalga tushmaydi va skladga ta'sir qilmaydi.
+2. Egasida yuqorida **📥 Zakazlar** tugmasi (o'qilmaganlar soni bilan) paydo bo'ladi, yangi zakaz kelsa ekranda xabar chiqadi (har 20 soniyada tekshiriladi).
+3. Egasi zakazni ochib tekshiradi va:
+   - **✔ Tasdiqlash**: zakaz jadvalga (sotuvchi ko'rsatgan sanaga, «Hali tayyor emas» holatida) qo'shiladi;
+   - **✏️ Tahrirlab tasdiqlash**: forma ochiladi, kerakli joyini o'zgartirib (zborshik, labo, holat, zalog ham) tasdiqlaydi;
+   - **✖ Rad etish**: sabab yozsa bo'ladi. Sotuvchi rad etilganini sababi bilan ko'radi, tuzatib qayta yuboradi yoki o'chiradi.
+4. Tasdiqlashda amal kodi (o'rnatilgan bo'lsa) so'raladi, chunki bu yuk qo'shish amali. Tasdiqlangach xodimlarga odatdagidek bildirishnoma boradi.
+
+**Zalog:**
+- Zalog (so'm) alohida maydon: **astatka va to'lov hisobiga ta'sir qilmaydi**.
+- **Faqat egasi va shu zakazni yuborgan sotuvchi ko'radi.** Xodim (ishchi), zborshik, shafyor, boshqa sotuvchilar ko'rmaydi; ularning ro'yxatlari, chop etishlari va Excel faylida zalog yo'q. Xodim zakazni tahrirlasa ham zalog o'zgarmaydi.
+- Egasi zalogni o'zi qo'shgan/tahrirlagan zakazlarda ham kiritishi mumkin (forma va tahrirlashda «💵 Zalog» maydoni faqat egasiga ko'rinadi).
+- **Egasining hisobotlarida yoziladi:** 📊 Hisobot → «💵 Zalog hisoboti»: sotuvchilar kesimida zakazlar soni va zalog yig'indisi, pastida har bir zalog yozuvi (sana, sotuvchi, zakaz, summa, izoh), davrni tanlash va chop etish. Excel faylda («⬇️ Excel») qo'shimcha **Zalog** varag'i va «Sotuvchi / Zalog» ustunlari bor (faqat egasi yuklasa).
+- Zalog sotuvchi zakazni yuborgan kunga yoziladi. Faqat tasdiqlangan zakazlar hisoblanadi.
+- Ma'lumot: kutilayotgan zakazlar `DATA_DIR/yuk-data/owners/<id>/kutilayotgan.json` da, zalog esa zakazning o'zida (`loads.json`) saqlanadi.

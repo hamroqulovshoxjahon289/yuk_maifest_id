@@ -766,3 +766,6 @@ form > .field-row:first-child { }
 .notif-item.unread { border-color: var(--accent); background: var(--accent-dim); }
 .notif-title { font-weight: 800; font-size: 13px; margin-bottom: 3px; }
 .notif-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-right: 6px; }
+
+/* ---------- Sotuvchi zakazlari (kutilayotgan) ---------- */
+.pend-row:hover { border-color: var(--accent); background: var(--panel-2); }

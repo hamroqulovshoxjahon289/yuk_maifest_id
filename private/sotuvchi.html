@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Do'kon — zakaz qabul qilish · Yuk Manifest</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="yuk-style.css" />
+<link rel="stylesheet" href="zborshik.css" />
+<link rel="stylesheet" href="sotuvchi.css" />
+</head>
+<body>
+<header class="zb-top">
+  <div>
+    <div class="zb-hello" id="sName">—</div>
+    <div class="zb-sub">Do'kon sotuvchisi — zakaz qabul qilish</div>
+  </div>
+  <div class="zb-actions">
+    <button class="primary-btn small-btn" id="newOrderBtn">➕ Yangi zakaz</button>
+    <button class="ghost-btn small-btn" id="refreshBtn" title="Yangilash">↻</button>
+    <button class="ghost-btn small-btn" id="logoutBtn">Chiqish</button>
+  </div>
+</header>
+
+<main class="zb-list" id="sMain"></main>
+
+<!-- ============ ZAKAZ QO'SHISH / TAHRIRLASH ============ -->
+<div id="orderModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="orderModalTitle">Yangi zakaz</h2>
+      <button class="icon-btn close-modal" type="button">✕</button>
+    </div>
+    <form id="orderForm" class="modal-body" autocomplete="off">
+      <div class="section-label">Mahsulot</div>
+      <div class="field-row">
+        <label>Kategoriya
+          <select id="o_kategoriya" required></select>
+        </label>
+        <label>Nomi (bo'sh qoldirsangiz, sklad mahsulotlaridan olinadi)
+          <input type="text" id="o_nomi" maxlength="120" placeholder="masalan: Malika, Diyor..." />
+        </label>
+      </div>
+      <div class="field-row" id="o_matrasRow" style="display:none">
+        <label class="checkbox-label"><input type="checkbox" id="o_matras_bor" /> Matras qo'shilsinmi?</label>
+        <label id="o_matrasTuriWrap" style="display:none">Matras o'lchami
+          <select id="o_matras_turi"></select>
+        </label>
+      </div>
+
+      <div class="section-label">🏬 Sklad mahsulotlari</div>
+      <div class="sk-picker">
+        <div class="sk-tabs" id="o_pickTabs"></div>
+        <div class="field-row three">
+          <label id="o_pickCatLabel">Kategoriya
+            <select id="o_pickCat"></select>
+          </label>
+          <label>Model
+            <select id="o_pickModel"></select>
+          </label>
+          <label>Soni
+            <input type="number" id="o_pickQty" min="1" step="1" value="1" />
+          </label>
+        </div>
+        <button type="button" class="ghost-btn small-btn" id="o_pickAdd">＋ Qo'shish</button>
+        <div id="o_picked" class="sk-picked"></div>
+      </div>
+
+      <div class="field-row">
+        <label>Izoh (ixtiyoriy)
+          <input type="text" id="o_izoh" maxlength="300" placeholder="masalan: mijoz maxsus talabi..." />
+        </label>
+      </div>
+      <div class="field-row">
+        <label class="narrow">Jo'natish sanasi
+          <input type="date" id="o_sana" required />
+        </label>
+        <label>Filial
+          <select id="o_filial"></select>
+        </label>
+      </div>
+
+      <div class="section-label">Manzil</div>
+      <div class="field-row">
+        <label>Hudud / mahalla / ko'cha
+          <input type="text" id="o_hudud" maxlength="200" placeholder="masalan: Chilonzor, 15-kvartal" />
+        </label>
+      </div>
+      <div class="field-row three">
+        <label>Dom<input type="text" id="o_dom" maxlength="30" /></label>
+        <label>Padyez<input type="text" id="o_padyez" maxlength="30" /></label>
+        <label>Etaj<input type="text" id="o_etaj" maxlength="30" /></label>
+      </div>
+
+      <div class="section-label">To'lov</div>
+      <div class="field-row">
+        <label>Astatka / qoldiq (so'm)
+          <input type="number" id="o_astatka" min="0" placeholder="1200000" />
+        </label>
+        <label>💵 Zalog (so'm)
+          <input type="number" id="o_zalog" min="0" placeholder="masalan: 500000" />
+        </label>
+      </div>
+      <div class="field-row">
+        <label>Zalog izohi (ixtiyoriy)
+          <input type="text" id="o_zalogIzoh" maxlength="200" placeholder="masalan: naqd, chek №15" />
+        </label>
+      </div>
+      <p class="muted-note">Zalogni faqat siz va egasi ko'radi. Boshqa xodimlar, zborshik va shafyorlar ko'rmaydi.</p>
+
+      <div class="section-label">Mijoz telefonlari</div>
+      <div class="field-row">
+        <label>1-nomer<input type="tel" id="o_tel1" maxlength="30" placeholder="+998 90 123 45 67" /></label>
+        <label>2-nomer<input type="tel" id="o_tel2" maxlength="30" placeholder="+998 91 234 56 78" /></label>
+      </div>
+
+      <p class="muted-note">Zakaz egasiga yuboriladi. U tekshirib tasdiqlagandan keyingina jadvalga tushadi.</p>
+      <p class="form-error" id="orderError"></p>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn close-modal">Bekor qilish</button>
+        <button type="submit" class="primary-btn" id="orderSubmitBtn">📤 Egasiga yuborish</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<script src="sotuvchi.js"></script>
+</body>
+</html>
