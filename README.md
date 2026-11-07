@@ -108,3 +108,24 @@ Birinchi marta `LEGACY_OWNER_EMAIL` dagi Gmail bilan kirganingizda, `DATA_DIR/yu
 - **Egasining hisobotlarida yoziladi:** 📊 Hisobot → «💵 Zalog hisoboti»: sotuvchilar kesimida zakazlar soni va zalog yig'indisi, pastida har bir zalog yozuvi (sana, sotuvchi, zakaz, summa, izoh), davrni tanlash va chop etish. Excel faylda («⬇️ Excel») qo'shimcha **Zalog** varag'i va «Sotuvchi / Zalog» ustunlari bor (faqat egasi yuklasa).
 - Zalog sotuvchi zakazni yuborgan kunga yoziladi. Faqat tasdiqlangan zakazlar hisoblanadi.
 - Ma'lumot: kutilayotgan zakazlar `DATA_DIR/yuk-data/owners/<id>/kutilayotgan.json` da, zalog esa zakazning o'zida (`loads.json`) saqlanadi.
+
+## 🕵️ Kuzatuv jurnali (yashirin, faqat admin) — yangilanish
+Admin (ega) tizimda **hamma kim nima qilganini** ko'ra oladi. Xodim, zborshik, shafyor va sotuvchilar bu bo'limni ko'rmaydi va bilmaydi.
+
+**Qanday ochiladi (yashirin):** yuqori chapdagi **◈ logotipni 5 marta ketma-ket bosing** (yoki kompyuterda `Ctrl+Alt+K`). Birinchi marta o'zingiz **kuzatuv kodi** (4–8 raqam) o'ylab topasiz, keyin har safar shu kod so'raladi. Kodni «🔐 Kod» tabida o'zgartirsa bo'ladi. Oyna yopilsa yoki 10 daqiqa harakatsiz qolsa, kod xotiradan o'chadi. 8 marta noto'g'ri kod kiritilsa 15 daqiqaga bloklanadi va bu ham jurnalga yoziladi.
+
+**Nimalar yoziladi** (admin o'zi ham, ya'ni uning amallari ham):
+- **Kirish va qurilma:** kim, qachon kirdi/chiqdi, qaysi qurilma bilan (telefon / planshet / kompyuter-noutbuk, telefon modeli, Android/iOS/Windows, brauzer, ekran o'lchami, IP). Noto'g'ri parol bilan urinishlar ham yoziladi.
+- **Faollik:** zborshik/shafyor/xodim ishlayotgani (har ~10–15 daqiqada bitta yozuv), zborshik zakazlar ro'yxatini ochgani va **qaysi mahsulot suratini ko'rgani**.
+- **Zakazlar:** qo'shdi, tahrirladi (**har bir o'zgargan maydon uchun «oldin → keyin»**: sana, astatka, telefon, manzil, mahsulotlar, zborshik, holat, zalog...), holat o'zgartirdi, **o'chirdi** (o'chirilgan zakazning to'liq nusxasi bilan), tartibini o'zgartirdi.
+- **Pul:** kim, qancha pul oldi, qaysi zakazga; **pul yozuvlarini bekor qilish** (qancha va kim olgani bilan) alohida qizil belgi bilan.
+- **Sotuvchi zakazlari:** yubordi, tahrirladi (oldin → keyin), bekor qildi; admin **tasdiqladi / tahrirlab tasdiqladi** (sotuvchi yozgani bilan admin o'zgartirgani farqi bilan) / rad etdi.
+- **Sklad:** kirim, qoldiqni qo'lda to'g'rilash (kamaytirilsa qizil), model/kategoriya qo'shish-o'chirish, surat yuklash.
+- **Jamoa:** xodim/sotuvchi/zborshik/labo/filial qo'shish, ruxsatlarini o'zgartirish, to'xtatish, o'chirish; kodlarni o'zgartirish; Excel yuklab olish; noto'g'ri kod bilan urinish.
+- **Parollar va kodlar jurnalga umuman yozilmaydi** (faqat «o'zgartirildi» deb yoziladi).
+
+**Ko'rinishi:** «👥 Odamlar» tabida har bir kishi: oxirgi kirish, oxirgi faollik, qaysi qurilmadan, bugun nechta amal, qaysi qurilmalardan kirgan, shubhali (xato parol, xavfli amal) soni. «🕒 Jurnal» tabida vaqt tartibida hammasi, filtr: kim / turi / sana / faqat xavfli / qidiruv.
+
+**Xavfsizlik:** jurnal faqat qo'shiladi (uni tahrirlash yoki o'chirish yo'li yo'q). Ma'lumot `DATA_DIR/yuk-data/owners/<id>/kuzatuv.jsonl` da saqlanadi (oxirgi ~60 000 yozuv). Interfeys kodi alohida `owner-extra.js` faylida bo'lib, server uni faqat ega sessiyasiga beradi. Xodimning brauzeriga bu funksiya haqida hech narsa yuklanmaydi. Jurnal API'si (`/api/audit/*`) ham faqat ega + kod bilan ishlaydi.
+
+**Eslatma:** qurilma ma'lumoti brauzer yuboradigan ma'lumotdan aniqlanadi (ba'zi telefonlar modelini yashiradi, kompyuterda «noutbuk yoki stol kompyuteri»ni ajratib bo'lmaydi). Shuning uchun IP manzil va ekran o'lchami bilan birga ko'rsatiladi.

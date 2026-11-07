@@ -528,6 +528,7 @@ function closeModals() {
   document.getElementById('sellerModal').classList.add('hidden');
   document.getElementById('pendingModal').classList.add('hidden');
   document.getElementById('pendingViewModal').classList.add('hidden');
+  (window.__closeHooks || []).forEach((f) => { try { f(); } catch { /* e'tiborsiz */ } });
   editingPendingId = null;
   settingsCode = '';
 }
@@ -2214,5 +2215,6 @@ async function boot() {
   populateFiliallar(filialSelect, '');
   await refresh();
   if (isOwner()) initPending(); // sotuvchilardan kelgan zakazlar faqat egasiga
+  if (isOwner()) { const s = document.createElement('script'); s.src = '/owner-extra.js'; document.head.appendChild(s); } // faqat egasiga beriladigan qo'shimcha bo'limlar
 }
 boot().catch(() => showToast('Serverga ulanishda xatolik', true));

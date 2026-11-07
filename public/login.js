@@ -1,4 +1,10 @@
 const $ = (id) => document.getElementById(id);
+// Kirish xavfsizligi uchun qurilma haqida qisqa ma'lumot (ekran, til, vaqt mintaqasi) — egasi ko'ra oladi
+function deviceInfo() {
+  try {
+    return { ekran: `${screen.width}x${screen.height}`, til: navigator.language, tz: Intl.DateTimeFormat().resolvedOptions().timeZone, platforma: navigator.platform };
+  } catch { return {}; }
+}
 
 // Tablar
 document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
@@ -15,7 +21,7 @@ $('loginPane').addEventListener('submit', async (e) => {
   try {
     const res = await fetch('/api/auth/login', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ login: $('login').value, password: $('password').value }),
+      body: JSON.stringify({ login: $('login').value, password: $('password').value, device: deviceInfo() }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Xatolik');
@@ -32,7 +38,7 @@ async function onGoogle(resp) {
   try {
     const res = await fetch('/api/auth/google', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ credential: resp.credential }),
+      body: JSON.stringify({ credential: resp.credential, device: deviceInfo() }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Xatolik');

@@ -10,6 +10,7 @@ const XLSX = require('xlsx');
 const { createStore } = require('./store');
 const { createSklad } = require('./sklad');
 const { createNotify } = require('./notify');
+const { createAudit } = require('./audit');
 const {
   hashPassword, verifyPassword, signToken, verifyToken, parseCookies, verifyGoogleIdToken, createLimiter,
 } = require('./auth');
@@ -204,11 +205,16 @@ app.get('/yuk.html', pageGuard(['owner', 'ishchi'], 'yuk.html'));
 app.get('/zborshik.html', pageGuard(['zborshik'], 'zborshik.html'));
 app.get('/labo.html', pageGuard(['labo'], 'labo.html'));
 app.get('/sotuvchi.html', pageGuard(['sotuvchi'], 'sotuvchi.html'));
+app.get('/owner-extra.js', pageGuard(['owner'], 'owner-extra.js')); // faqat egasiga beriladigan qo'shimcha interfeys
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // ============================================================
 //  AUTH API
 // ============================================================
+// Kuzatuv jurnali: kim, qachon, qaysi qurilmadan, nima qildi (oldin -> keyin). Faqat egasi ko'radi.
+const audit = createAudit({ store, getUser, sklad });
+app.use('/api', audit.middleware);
+
 const loginLimiter = createLimiter(8, 15 * 60 * 1000);
 
 app.get('/api/auth/config', (req, res) => res.json({ googleClientId: GOOGLE_CLIENT_ID }));
@@ -241,6 +247,7 @@ app.post('/api/auth/google', async (req, res) => {
   }
   if (user.active === false) return res.status(403).json({ error: 'Bu akaunt o\'chirilgan' });
   setSession(req, res, user);
+  audit.log(req, { tur: 'kirish', matn: 'Tizimga kirdi (Google orqali)' }, { actor: user, ownerId: user.id, device: req.body.device });
   res.json({ ok: true, redirect: homeFor(user) });
 });
 
@@ -266,17 +273,27 @@ app.post('/api/auth/login', (req, res) => {
   const ok = user ? verifyPassword(password, user.passHash) : (verifyPassword(password, DUMMY_HASH), false);
   if (!ok) {
     loginLimiter.fail(key);
+    if (user) audit.log(req, { tur: 'kirish_xato', xavf: true, matn: `Noto'g'ri parol bilan kirishga urindi (login: ${login})` }, { actor: user, ownerId: user.ownerId, device: req.body.device });
     return res.status(401).json({ error: 'Login yoki parol noto\'g\'ri' });
   }
-  if (user.active === false) return res.status(403).json({ error: 'Sizning kirishingiz to\'xtatilgan. Egasiga murojaat qiling.' });
+  if (user.active === false) {
+    audit.log(req, { tur: 'kirish_xato', xavf: true, matn: "To'xtatilgan akaunt bilan kirishga urindi" }, { actor: user, ownerId: user.ownerId, device: req.body.device });
+    return res.status(403).json({ error: 'Sizning kirishingiz to\'xtatilgan. Egasiga murojaat qiling.' });
+  }
   const owner = store.users().find((u) => u.id === user.ownerId);
   if (!owner || owner.active === false) return res.status(403).json({ error: 'Akaunt faol emas' });
   loginLimiter.clear(key);
   setSession(req, res, user);
+  audit.log(req, { tur: 'kirish', matn: 'Tizimga kirdi (login-parol)' }, { actor: user, ownerId: user.ownerId, device: req.body.device });
   res.json({ ok: true, redirect: homeFor(user) });
 });
 
-app.post('/api/auth/logout', (req, res) => { clearSession(res); res.json({ ok: true }); });
+app.post('/api/auth/logout', (req, res) => {
+  const u = getUser(req);
+  if (u) audit.log(req, { tur: 'chiqish', matn: 'Tizimdan chiqdi' }, { actor: u, ownerId: u.role === 'owner' ? u.id : u.ownerId });
+  clearSession(res);
+  res.json({ ok: true });
+});
 app.get('/api/auth/me', requireAuth, (req, res) => res.json(publicUser(req.user)));
 
 // Egasi kodlarini o'rnatadi / o'zgartiradi / o'chiradi. Yuborilmagan maydon o'zgarmaydi, bo'sh yuborilsa — o'chadi.
@@ -1035,6 +1052,45 @@ app.delete('/api/loads/:id', requireAuth, staffOnly, can('delete'), deleteCode, 
   writeLoads(req.paths, loads);
   res.json({ ok: true });
 });
+
+// ============================================================
+//  KUZATUV JURNALI — faqat egasi, alohida kod bilan (xodimlar bu yo'llarga umuman kira olmaydi)
+// ============================================================
+const auditLimiter = createLimiter(8, 15 * 60 * 1000);
+function checkAuditCode(req, res) {
+  const key = `${req.ownerId}|audit`;
+  if (!auditLimiter.check(key)) { res.status(429).json({ error: "Kod juda ko'p marta noto'g'ri kiritildi. 15 daqiqadan keyin urinib ko'ring." }); return false; }
+  const code = String(req.headers['x-audit-code'] || '').trim();
+  if (!code || !verifyPassword(code, req.user.auditCodeHash)) {
+    if (code) {
+      auditLimiter.fail(key);
+      audit.log(req, { tur: 'xavf', xavf: true, matn: "Kuzatuv jurnaliga NOTO'G'RI KOD bilan kirishga urindi" });
+    }
+    res.status(403).json({ error: code ? "Kuzatuv kodi noto'g'ri" : 'Kuzatuv kodi kerak', auditCode: true });
+    return false;
+  }
+  auditLimiter.clear(key);
+  return true;
+}
+function auditGate(req, res, next) {
+  res.set('Cache-Control', 'no-store');
+  if (!req.user.auditCodeHash) return res.status(403).json({ error: "Kuzatuv kodi hali o'rnatilmagan", auditSetup: true });
+  if (checkAuditCode(req, res)) next();
+}
+app.get('/api/audit/status', requireAuth, ownerOnly, (req, res) => { res.set('Cache-Control', 'no-store'); res.json({ codeSet: !!req.user.auditCodeHash }); });
+app.post('/api/audit/code', requireAuth, ownerOnly, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const kod = String(req.body.kod || '').trim();
+  if (!/^\d{4,8}$/.test(kod)) return res.status(400).json({ error: "Kod 4 dan 8 gacha raqamdan iborat bo'lsin" });
+  const had = !!req.user.auditCodeHash;
+  if (had && !checkAuditCode(req, res)) return; // eski kodni bilmasdan o'zgartirib bo'lmaydi
+  req.user.auditCodeHash = hashPassword(kod);
+  store.saveUsers();
+  audit.log(req, { tur: 'kod', xavf: true, matn: had ? "Kuzatuv kodini o'zgartirdi" : "Kuzatuv kodini o'rnatdi" });
+  res.json({ ok: true });
+});
+app.get('/api/audit/people', requireAuth, ownerOnly, auditGate, (req, res) => res.json(audit.people(req.ownerId)));
+app.get('/api/audit/events', requireAuth, ownerOnly, auditGate, (req, res) => res.json(audit.events(req.ownerId, req.query)));
 
 // ============================================================
 //  SOTUVCHILAR (do'kon) — egasi login-parol beradi
