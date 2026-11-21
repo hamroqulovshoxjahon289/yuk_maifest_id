@@ -211,7 +211,7 @@ function createAudit({ store, getUser, sklad }) {
     ['PUT', E('codes'), 'codes'],
     ['POST', E('sklad/categories'), 'sk_cat_new'], ['PUT', E('sklad/categories/([^/]+)'), 'sk_cat_edit'], ['DELETE', E('sklad/categories/([^/]+)'), 'sk_cat_del'],
     ['POST', E('sklad/models'), 'sk_mod_new'], ['PUT', E('sklad/models/([^/]+)'), 'sk_mod_edit'], ['DELETE', E('sklad/models/([^/]+)'), 'sk_mod_del'],
-    ['POST', E('sklad/models/([^/]+)/kirim'), 'sk_kirim'], ['PUT', E('sklad/models/([^/]+)/qoldiq'), 'sk_qoldiq'],
+    ['POST', E('sklad/models/([^/]+)/kirim'), 'sk_kirim'], ['PUT', E('sklad/models/([^/]+)/qoldiq'), 'sk_qoldiq'], ['PUT', E('sklad/models/([^/]+)/matras'), 'sk_mod_edit'],
     ['PUT', E('sklad/models/([^/]+)/rasm'), 'sk_img'], ['DELETE', E('sklad/models/([^/]+)/rasm'), 'sk_img_del'],
   ];
 
@@ -356,7 +356,7 @@ function createAudit({ store, getUser, sklad }) {
       case 'sk_mod_new': { const r = resBody || {}; return { tur: 'sklad', matn: `Sklad modeli qo'shdi: ${r.nomi} (boshlang'ich qoldiq: ${r.qoldiq ?? 0})` }; }
       case 'sk_mod_edit': {
         const a = clone(sklad.read(paths).models.find((x) => x.id === id));
-        const oz = diffObj(pre.model, a, { nomi: 'Nomi', categoryId: 'Kategoriya (ID)', min: 'Minimal qoldiq' });
+        const oz = diffObj(pre.model, a, { nomi: 'Nomi', categoryId: 'Kategoriya (ID)', min: 'Minimal qoldiq', matrasKetadi: 'Matras ketadimi', matrasIds: 'Ketadigan matraslar (ID)' });
         return { tur: 'sklad', matn: `Sklad modelini o'zgartirdi: ${(pre.model && pre.model.nomi) || ''}`, oz };
       }
       case 'sk_mod_del': return { tur: 'sklad', xavf: true, matn: `Sklad modelini O'CHIRDI: ${(pre.model && pre.model.nomi) || ''} (qoldiq ${pre.model ? pre.model.qoldiq : '—'} edi)` };

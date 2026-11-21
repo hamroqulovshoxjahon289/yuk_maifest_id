@@ -1,0 +1,81 @@
+{
+  "categories": [
+    {
+      "id": "3b0e4cbe-83b6-4b34-8e4c-d0bebbdd5e81",
+      "yonalish": "mebel",
+      "nomi": "adnaspalni"
+    },
+    {
+      "id": "2e2adde1-05eb-4311-b0b9-fd50367edb4a",
+      "yonalish": "mebel",
+      "nomi": "shkaf"
+    },
+    {
+      "id": "16d555d5-5eed-47b4-9a64-b3d4ec8035fa",
+      "yonalish": "mebel",
+      "nomi": "spalni garnitur"
+    },
+    {
+      "id": "607d0e8a-331f-422f-b832-a34622dad039",
+      "yonalish": "matras",
+      "nomi": "Matras",
+      "yashirin": true
+    }
+  ],
+  "models": [
+    {
+      "id": "612b88a6-3eeb-4e06-acec-7c7c88eab8ac",
+      "categoryId": "607d0e8a-331f-422f-b832-a34622dad039",
+      "nomi": "200x85 artaped",
+      "qoldiq": 2,
+      "createdAt": "2026-11-21T03:59:59.625Z"
+    },
+    {
+      "id": "7604da09-9e1b-4848-848b-0914fee786b8",
+      "categoryId": "3b0e4cbe-83b6-4b34-8e4c-d0bebbdd5e81",
+      "nomi": "leyka orex",
+      "qoldiq": 0,
+      "createdAt": "2026-11-21T04:00:07.650Z",
+      "matrasKetadi": true,
+      "matrasIds": [
+        "612b88a6-3eeb-4e06-acec-7c7c88eab8ac"
+      ]
+    },
+    {
+      "id": "01b82486-9fed-40a8-99f2-b3efc8d5710c",
+      "categoryId": "2e2adde1-05eb-4311-b0b9-fd50367edb4a",
+      "nomi": "jesika orex",
+      "qoldiq": 0,
+      "createdAt": "2026-11-21T04:00:23.415Z",
+      "matrasKetadi": false,
+      "matrasIds": []
+    },
+    {
+      "id": "a9ab8875-c330-42dc-84ec-f55e52a0c875",
+      "categoryId": "16d555d5-5eed-47b4-9a64-b3d4ec8035fa",
+      "nomi": "miss",
+      "qoldiq": 0,
+      "createdAt": "2026-11-21T04:01:40.959Z",
+      "matrasKetadi": true,
+      "matrasIds": [
+        "612b88a6-3eeb-4e06-acec-7c7c88eab8ac"
+      ]
+    }
+  ],
+  "harakat": [
+    {
+      "id": "116dde47-6882-4192-b209-1f63cacefb75",
+      "sana": "2026-11-21",
+      "vaqt": "2026-11-21T04:00:00.004Z",
+      "modelId": "612b88a6-3eeb-4e06-acec-7c7c88eab8ac",
+      "yonalish": "matras",
+      "kategoriya": "Matras",
+      "model": "200x85 artaped",
+      "delta": 2,
+      "tur": "kirim",
+      "loadId": null,
+      "loadNomi": "",
+      "kim": "Shoxjahon Hamroqulov"
+    }
+  ]
+}

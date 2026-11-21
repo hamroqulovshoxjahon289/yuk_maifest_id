@@ -13,8 +13,7 @@ let me = null;
 let meta = { categories: [], matrasCategories: [], matrasTypes: [], filiallar: [], sklad: { yonalishlar: [], categories: [], models: [] }, perms: {} };
 let orders = { pending: [], rejected: [], accepted: [] };
 let editingId = null;
-let items = [];
-let pickYon = 'mebel';
+let editOrigNomi = '';
 
 async function api(url, method = 'GET', body) {
   const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
@@ -46,7 +45,7 @@ function fmtTime(iso) {
 // ---------- Ro'yxat ----------
 function itemsHtml(list) {
   if (!(list || []).length) return '<span class="muted">—</span>';
-  return `<div class="s-items">${list.map((i) => `<div>${YON_ICON[i.yonalish] || '📦'} ${i.yonalish === 'matras' || !i.kategoriya ? '' : `${esc(i.kategoriya)} · `}<b>${esc(i.model)}</b> × ${i.soni}</div>`).join('')}</div>`;
+  return `<div class="s-items">${list.map((i) => `<div>${YON_ICON[i.yonalish] || '📦'} ${i.yonalish === 'matras' || !i.kategoriya ? '' : `${esc(i.kategoriya)} · `}<b>${esc(i.model)}</b> × ${i.soni}${i.fromModel ? ` <span class="muted">(${esc(i.fromModel)} uchun)</span>` : ''}</div>`).join('')}</div>`;
 }
 function orderCard(o, kind) {
   const addr = [o.manzil?.hudud, o.manzil?.dom ? `dom ${o.manzil.dom}` : '', o.manzil?.padyez ? `${o.manzil.padyez}-padyez` : '', o.manzil?.etaj ? `${o.manzil.etaj}-etaj` : ''].filter(Boolean).join(', ');
@@ -59,13 +58,13 @@ function orderCard(o, kind) {
     <div class="zb-cat">${esc(o.kategoriya?.nomi || '')} · 🕒 ${esc(when)}</div>
     ${kind === 'acc' ? row('Holat', HOLAT_LABEL[o.holat] || esc(o.holat)) : ''}
     ${row("Jo'natish sanasi", esc(dayLabel(o.sana)))}
-    ${row('Mahsulotlar', itemsHtml(o.skladItems))}
+    ${row('Yuklar', itemsHtml(o.skladItems))}
     ${row('Manzil', esc(addr || '—'))}
     ${row('Astatka', `${money(o.astatka)} so'm`, 'mono')}
     ${zalogSum ? row('💵 Zalog', `<span class="s-zalog">${money(zalogSum)} so'm</span>${zalogNote ? `<div class="muted">${esc(zalogNote)}</div>` : ''}`) : ''}
     ${row('Telefon', esc([o.tel1, o.tel2].filter(Boolean).join(' · ') || '—'), 'mono')}
     ${o.filial?.nomi ? row('Filial', esc(o.filial.nomi)) : ''}
-    ${o.izoh ? row('Izoh', esc(o.izoh)) : ''}
+    ${o.izoh ? row('📝 Tavsif', esc(o.izoh)) : ''}
     ${kind === 'rad' ? `<div class="s-reason">❌ Egasi rad etdi${o.radSababi ? `: ${esc(o.radSababi)}` : ''}</div>` : ''}
     ${kind === 'pend' || kind === 'rad' ? `<div class="s-btns">
       <button class="ghost-btn small-btn" data-edit="${esc(o.id)}">${kind === 'rad' ? '✏️ Tuzatib qayta yuborish' : '✏️ Tahrirlash'}</button>
@@ -101,60 +100,14 @@ $('sMain').addEventListener('click', async (e) => {
 });
 
 // ---------- Forma ----------
-const catSel = $('o_kategoriya');
 function fill(select, list, placeholder, valueFn, labelFn) {
   select.innerHTML = '';
   const ph = document.createElement('option'); ph.value = ''; ph.textContent = placeholder; ph.disabled = true; select.appendChild(ph);
   list.forEach((x) => { const o = document.createElement('option'); o.value = valueFn(x); o.textContent = labelFn(x); select.appendChild(o); });
   select.value = '';
 }
-const modelInfo = (id) => { const m = meta.sklad.models.find((x) => x.id === id); return m ? { m, c: meta.sklad.categories.find((c) => c.id === m.categoryId) } : null; };
-
-function toggleMatras() {
-  const cat = meta.categories.find((c) => c.id === catSel.value);
-  const ok = !!cat && meta.matrasCategories.some((m) => m.toLowerCase() === cat.name.toLowerCase());
-  $('o_matrasRow').style.display = ok ? '' : 'none';
-  if (!ok) { $('o_matras_bor').checked = false; $('o_matrasTuriWrap').style.display = 'none'; }
-}
-catSel.addEventListener('change', toggleMatras);
-$('o_matras_bor').addEventListener('change', () => { $('o_matrasTuriWrap').style.display = $('o_matras_bor').checked ? '' : 'none'; });
-
-function fillPickModels() {
-  const models = pickYon === 'matras'
-    ? meta.sklad.models.filter((m) => meta.sklad.categories.find((c) => c.id === m.categoryId)?.yonalish === 'matras').sort((a, b) => a.nomi.localeCompare(b.nomi, undefined, { numeric: true }))
-    : meta.sklad.models.filter((m) => m.categoryId === $('o_pickCat').value);
-  fill($('o_pickModel'), models, models.length ? 'Modelni tanlang' : "Model yo'q", (m) => m.id, (m) => `${m.nomi} (skladda: ${m.qoldiq})`);
-}
-function renderPicker() {
-  $('o_pickTabs').innerHTML = meta.sklad.yonalishlar.map((y) => `<button type="button" class="sk-tab ${y.id === pickYon ? 'active' : ''}" data-y="${y.id}">${YON_ICON[y.id] || ''} ${esc(y.nomi)}</button>`).join('');
-  $('o_pickCatLabel').style.display = pickYon === 'matras' ? 'none' : '';
-  const cats = meta.sklad.categories.filter((c) => c.yonalish === pickYon && !c.yashirin);
-  fill($('o_pickCat'), cats, cats.length ? 'Kategoriyani tanlang' : "Kategoriya yo'q", (c) => c.id, (c) => c.nomi);
-  fillPickModels();
-  $('o_pickQty').value = 1;
-  renderPicked();
-}
-function renderPicked() {
-  $('o_picked').innerHTML = items.map((it, idx) => {
-    const info = modelInfo(it.modelId);
-    const name = info ? `${YON_ICON[info.c?.yonalish] || '📦'} ${info.c?.yonalish === 'matras' ? '' : `${esc(info.c?.nomi || '')} · `}${esc(info.m.nomi)}` : `${esc(it.model || '')} (o'chirilgan)`;
-    return `<div class="sk-line"><span class="sk-name">${name}</span><input type="number" min="1" step="1" value="${it.soni}" data-pi="${idx}" /><button type="button" class="danger-btn small-btn" data-prm="${idx}">✕</button></div>`;
-  }).join('');
-}
-$('o_pickTabs').addEventListener('click', (e) => { const y = e.target.closest('[data-y]')?.dataset.y; if (y) { pickYon = y; renderPicker(); } });
-$('o_pickCat').addEventListener('change', fillPickModels);
-$('o_pickAdd').onclick = () => {
-  const info = modelInfo($('o_pickModel').value);
-  const soni = Math.floor(Number($('o_pickQty').value));
-  if (!info) { toast('Modelni tanlang', true); return; }
-  if (!(soni > 0)) { toast('Sonini kiriting (1 dan boshlab)', true); return; }
-  const ex = items.find((i) => i.modelId === info.m.id);
-  if (ex) ex.soni += soni; else items.push({ modelId: info.m.id, soni, model: info.m.nomi });
-  $('o_pickQty').value = 1; $('o_pickModel').value = '';
-  renderPicked();
-};
-$('o_picked').addEventListener('click', (e) => { const i = e.target.closest('[data-prm]')?.dataset.prm; if (i !== undefined) { items.splice(Number(i), 1); renderPicked(); } });
-$('o_picked').addEventListener('change', (e) => { const i = e.target.dataset.pi; if (i === undefined) return; const v = Math.floor(Number(e.target.value)); if (v > 0) items[Number(i)].soni = v; renderPicked(); });
+// Kategoriya → Model → Matras → Zakazga qo'shish (umumiy modul: picker.js)
+const picker = createPicker($('pickerRoot'), { toast: (m, isErr) => toast(m, isErr) });
 
 function openForm(o) {
   if (!meta.perms.add) { toast("Sizda zakaz qo'shishga ruxsat yo'q. Egasidan so'rang.", true); return; }
@@ -162,27 +115,20 @@ function openForm(o) {
   $('orderForm').reset();
   $('orderModalTitle').textContent = o ? (o.status === 'rad' ? 'Zakazni tuzatib qayta yuborish' : 'Zakazni tahrirlash') : 'Yangi zakaz';
   $('orderSubmitBtn').textContent = o ? '📤 Saqlab egasiga yuborish' : '📤 Egasiga yuborish';
-  fill(catSel, meta.categories, 'Kategoriyani tanlang', (c) => c.id, (c) => c.name);
   fill($('o_filial'), meta.filiallar, '— tanlanmagan —', (f) => f.id, (f) => f.nomi);
-  fill($('o_matras_turi'), meta.matrasTypes.map((t) => ({ t })), '— tanlang —', (x) => x.t, (x) => x.t);
-  $('o_matras_turi').value = meta.matrasTypes[0] || '';
-  items = o ? (o.skladItems || []).map((i) => ({ modelId: i.modelId, soni: i.soni, model: i.model })) : [];
-  pickYon = 'mebel';
-  renderPicker();
+  editOrigNomi = o ? (o.nomi || '') : '';
+  picker.setSklad(meta.sklad);
+  if (o) picker.setItems(o.skladItems || []); else picker.reset();
   $('o_sana').value = o ? o.sana : todayISO();
   if (o) {
-    catSel.value = o.kategoriya?.id || '';
-    $('o_nomi').value = o.nomi || '';
     $('o_filial').value = o.filial?.id || '';
-    toggleMatras();
-    if (o.matras?.bor) { $('o_matras_bor').checked = true; $('o_matrasTuriWrap').style.display = ''; $('o_matras_turi').value = o.matras.turi || meta.matrasTypes[0]; }
     $('o_izoh').value = o.izoh || '';
     $('o_hudud').value = o.manzil?.hudud || ''; $('o_dom').value = o.manzil?.dom || '';
     $('o_padyez').value = o.manzil?.padyez || ''; $('o_etaj').value = o.manzil?.etaj || '';
     $('o_astatka').value = o.astatka || '';
     $('o_zalog').value = o.zalogSumma || ''; $('o_zalogIzoh').value = o.zalogIzoh || '';
     $('o_tel1').value = o.tel1 || ''; $('o_tel2').value = o.tel2 || '';
-  } else { toggleMatras(); }
+  }
   $('orderError').textContent = '';
   $('orderModal').classList.remove('hidden');
 }
@@ -194,14 +140,12 @@ $('newOrderBtn').onclick = () => openForm(null);
 $('orderForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const err = $('orderError'); err.textContent = '';
-  if (!catSel.value) { err.textContent = 'Kategoriyani tanlang'; return; }
-  const send = items.filter((i) => modelInfo(i.modelId)).map((i) => ({ modelId: i.modelId, soni: i.soni }));
-  if (send.length < items.length) toast("O'chirilgan sklad modellari olib tashlandi", true);
-  if (!$('o_nomi').value.trim() && !send.length) { err.textContent = 'Nomini yozing yoki sklad mahsulotini tanlang'; return; }
+  if (!picker.commitPending()) return; // tanlangan, lekin qo'shilmagan model bo'lsa — o'zi qo'shiladi
+  const { send, dropped } = picker.getItems();
+  if (dropped) toast("O'chirilgan sklad modellari olib tashlandi", true);
+  if (!send.length && !$('o_izoh').value.trim() && !editOrigNomi) { err.textContent = "Yuk qo'shing: kategoriya → model tanlang (yoki tavsif yozing)"; return; }
   const body = {
-    kategoriyaId: catSel.value,
-    nomi: $('o_nomi').value.trim(),
-    matras: { bor: $('o_matras_bor').checked, turi: $('o_matras_bor').checked ? $('o_matras_turi').value : null },
+    nomi: send.length ? '' : editOrigNomi,
     filialId: $('o_filial').value || null,
     izoh: $('o_izoh').value.trim(),
     sana: $('o_sana').value,

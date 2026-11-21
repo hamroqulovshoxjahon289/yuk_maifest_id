@@ -193,12 +193,7 @@ async function addFilial(nomi) {
 }
 
 // ---------------- Formadagi selectlar ----------------
-const catSelect = document.getElementById('f_kategoriya');
-const nomiInput = document.getElementById('f_nomi');
-const matrasRow = document.getElementById('matrasRow');
-const matrasBorCheck = document.getElementById('f_matras_bor');
-const matrasTuriWrap = document.getElementById('matrasTuriWrap');
-const matrasTuriSelect = document.getElementById('f_matras_turi');
+let editOrigNomi = ''; // tahrirlanayotgan eski zakazning nomi (yuk tanlanmagan bo'lsa saqlanib qoladi)
 const zborshikSelect = document.getElementById('f_zborshik');
 const laboSelect = document.getElementById('f_labo');
 const filialSelect = document.getElementById('f_filial');
@@ -225,13 +220,7 @@ function fillSelect(select, items, placeholder, addLabel, valueFn, labelFn) {
   select.value = '';
 }
 
-function currentCategory() { return taxonomy.categories.find((c) => c.id === catSelect.value); }
-
-function populateCategories(selectedId) {
-  fillSelect(catSelect, taxonomy.categories, 'Kategoriyani tanlang', "➕ Yangi kategoriya qo'shish");
-  if (selectedId) catSelect.value = selectedId;
-  toggleMatrasRow();
-}
+function populateCategories() { /* kategoriya endi sklad kategoriyasidan olinadi (tanlash paneli) */ }
 function populateZborshiklar(select, selectedId) {
   fillSelect(select, zborshiklar, '— tanlanmagan —', "➕ Yangi zborshik qo'shish", null, (z) => `${z.ism}${z.telefon ? ' — ' + z.telefon : ''}`);
   select.value = selectedId || '';
@@ -244,38 +233,6 @@ function populateFiliallar(select, selectedId) {
   fillSelect(select, filiallar, '— tanlanmagan —', "➕ Yangi filial qo'shish", null, (f) => f.nomi);
   select.value = selectedId || '';
 }
-
-function toggleMatrasRow() {
-  const cat = currentCategory();
-  const name = (cat?.name || '').toLowerCase();
-  const applicable = taxonomy.matrasCategories.some((m) => m.toLowerCase() === name);
-  matrasRow.style.display = applicable ? '' : 'none';
-  if (!applicable) {
-    matrasBorCheck.checked = false;
-    matrasTuriWrap.style.display = 'none';
-  }
-}
-
-catSelect.addEventListener('change', async () => {
-  if (catSelect.value === NEW_OPTION) {
-    const name = prompt('Yangi kategoriya nomi:');
-    if (!name || !name.trim()) { catSelect.value = ''; return; }
-    try {
-      const cat = await addCategory(name.trim());
-      await fetchTaxonomy();
-      populateCategories(cat.id);
-    } catch (err) {
-      showToast(err.message, true);
-      catSelect.value = '';
-    }
-    return;
-  }
-  toggleMatrasRow();
-});
-
-matrasBorCheck.addEventListener('change', () => {
-  matrasTuriWrap.style.display = matrasBorCheck.checked ? '' : 'none';
-});
 
 zborshikSelect.addEventListener('change', async () => {
   if (zborshikSelect.value === NEW_OPTION) {
@@ -361,8 +318,10 @@ function renderBoard() {
 
     const dayLoads = loads.filter((l) => l.sana === iso).sort((a, b) => (a.tartib || 0) - (b.tartib || 0)); // tartib raqami bo'yicha; limit uchun — filtrlanmagan
     const displayLoads = dayLoads.filter(matchesSearch);
-    const otherLoads = displayLoads.filter((l) => (l.kategoriya?.nomi || '').toLowerCase() !== ADNASPALNI_NAME);
-    const adnaLoads = displayLoads.filter((l) => (l.kategoriya?.nomi || '').toLowerCase() === ADNASPALNI_NAME);
+    const isAdna = (l) => (l.kategoriya?.nomi || '').trim().toLowerCase() === ADNASPALNI_NAME
+      || (l.skladItems || []).some((i) => i.yonalish !== 'matras' && String(i.kategoriya || '').trim().toLowerCase() === ADNASPALNI_NAME);
+    const otherLoads = displayLoads.filter((l) => !isAdna(l));
+    const adnaLoads = displayLoads.filter(isAdna);
 
     const head = document.createElement('div');
     head.className = 'day-col-head';
@@ -452,14 +411,12 @@ function openAddModal(prefilledDate) {
   editingId = null;
   document.getElementById('formModalTitle').textContent = "Yangi yuk qo'shish";
   loadForm.reset();
-  populateCategories('');
   populateZborshiklar(zborshikSelect, '');
   populateLabolar(laboSelect, '');
   populateFiliallar(filialSelect, '');
-  matrasBorCheck.checked = false;
-  matrasTuriWrap.style.display = 'none';
-  formItems = [];
-  renderPicker();
+  editOrigNomi = '';
+  picker.setSklad(sklad);
+  picker.reset();
   document.getElementById('f_sana').value = prefilledDate || toISO(new Date());
   formError.textContent = '';
   setZalogFields(null);
@@ -470,21 +427,10 @@ function openAddModal(prefilledDate) {
 function openEditModal(l) {
   editingId = l.id;
   document.getElementById('formModalTitle').textContent = 'Yukni tahrirlash';
-  populateCategories(l.kategoriya?.id || '');
-  nomiInput.value = l.nomi || '';
+  editOrigNomi = l.nomi || '';
   populateZborshiklar(zborshikSelect, l.zborshik?.id || '');
   populateLabolar(laboSelect, l.labo?.id || '');
   populateFiliallar(filialSelect, l.filial?.id || '');
-
-  toggleMatrasRow();
-  if (l.matras?.bor) {
-    matrasBorCheck.checked = true;
-    matrasTuriWrap.style.display = '';
-    matrasTuriSelect.value = l.matras.turi || '';
-  } else {
-    matrasBorCheck.checked = false;
-    matrasTuriWrap.style.display = 'none';
-  }
 
   document.getElementById('f_izoh').value = l.izoh || '';
   document.getElementById('f_sana').value = l.sana || '';
@@ -496,8 +442,8 @@ function openEditModal(l) {
   document.getElementById('f_astatka').value = l.astatka || '';
   document.getElementById('f_tel1').value = l.tel1 || '';
   document.getElementById('f_tel2').value = l.tel2 || '';
-  formItems = (l.skladItems || []).map((i) => ({ ...i }));
-  renderPicker();
+  picker.setSklad(sklad);
+  picker.setItems(l.skladItems || []);
   formError.textContent = '';
   setZalogFields(l.zalog || null);
   document.getElementById('formSubmitBtn').textContent = 'Saqlash';
@@ -521,6 +467,7 @@ function closeModals() {
   document.getElementById('zbModal').classList.add('hidden');
   document.getElementById('loModal').classList.add('hidden');
   document.getElementById('skModal').classList.add('hidden');
+  document.getElementById('matCfgModal').classList.add('hidden');
   document.getElementById('imgModal').classList.add('hidden');
   document.getElementById('notifModal').classList.add('hidden');
   document.getElementById('settingsModal').classList.add('hidden');
@@ -551,10 +498,12 @@ loadForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   formError.textContent = '';
 
-  if (!catSelect.value || catSelect.value === NEW_OPTION) { formError.textContent = 'Kategoriyani tanlang'; return; }
-  const itemsToSend = formItems.filter((i) => modelInfo(i.modelId)).map((i) => ({ modelId: i.modelId, soni: i.soni }));
-  if (itemsToSend.length < formItems.length) showToast("O'chirilgan sklad modellari olib tashlandi", true);
-  if (!nomiInput.value.trim() && !itemsToSend.length) { formError.textContent = 'Nomini yozing yoki sklad mahsulotini tanlang'; return; }
+  // Tanlangan, lekin "Zakazga qo'shish" bosilmagan model bo'lsa — o'zi qo'shiladi
+  if (!picker.commitPending()) return;
+  const { send: itemsToSend, dropped } = picker.getItems();
+  if (dropped) showToast("O'chirilgan sklad modellari olib tashlandi", true);
+  const izohVal = document.getElementById('f_izoh').value.trim();
+  if (!itemsToSend.length && !izohVal && !editOrigNomi) { formError.textContent = "Yuk qo'shing: kategoriya → model tanlang (yoki tavsif yozing)"; return; }
 
   const manzil = {
     hudud: document.getElementById('f_hudud').value.trim(),
@@ -563,13 +512,11 @@ loadForm.addEventListener('submit', async (e) => {
     etaj: document.getElementById('f_etaj').value.trim(),
   };
   const base = {
-    kategoriyaId: catSelect.value,
-    nomi: nomiInput.value.trim(),
-    matras: { bor: matrasBorCheck.checked, turi: matrasBorCheck.checked ? matrasTuriSelect.value : null },
+    nomi: itemsToSend.length ? '' : editOrigNomi, // yuk tanlangan bo'lsa, nom modellardan avtomatik olinadi
     zborshikId: zborshikSelect.value || null,
     laboId: laboSelect.value || null,
     filialId: filialSelect.value || null,
-    izoh: document.getElementById('f_izoh').value.trim(),
+    izoh: izohVal,
     sana: document.getElementById('f_sana').value,
     holat: document.getElementById('f_holat').value,
     manzil,
@@ -645,8 +592,10 @@ function openViewModal(l) {
     <div class="view-row"><span class="k">Kategoriya</span><span class="v">${escapeHtml(l.kategoriya?.nomi || '—')}</span></div>
     <div class="view-row"><span class="k">Nomi</span><span class="v">${escapeHtml(l.nomi || '—')}</span></div>
     ${l.matras?.bor ? `<div class="view-row"><span class="k">Matras</span><span class="v">${escapeHtml(l.matras.turi)}</span></div>` : ''}
-    ${(l.skladItems || []).length ? `<div class="view-row"><span class="k">Sklad mahsulotlari</span><span class="v">${l.skladItems.map((i) => `${YON_ICON[i.yonalish] || '📦'} ${i.yonalish === 'matras' ? '' : `${escapeHtml(i.kategoriya)} · `}<b>${escapeHtml(i.model)}</b> × ${i.soni}`).join('<br>')}<br><span class="sk-muted">${l.skladCut ? 'Skladdan ayirildi ✓' : 'Yuborilganda skladdan ayiriladi'}</span></span></div>` : `<div class="view-row"><span class="k">Sklad mahsulotlari</span><span class="v"><span class="sk-warn-text">Tanlanmagan — «Yuborildi» bosilganda skladdan ayirilmaydi. «Tahrirlash» orqali qo'shing.</span></span></div>`}
-    ${l.izoh ? `<div class="view-row"><span class="k">Izoh</span><span class="v">${escapeHtml(l.izoh)}</span></div>` : ''}
+    ${(l.skladItems || []).length ? `<div class="view-row"><span class="k">Yuklar</span><span class="v">${(l.skladItems || []).map((i) => (i.yonalish === 'matras'
+      ? `<span class="pk-line mat">🛏 <b>${escapeHtml(i.model)}</b> × ${i.soni}${i.fromModel ? ` <span class="sk-muted">(${escapeHtml(i.fromModel)} uchun)</span>` : ''}</span>`
+      : `<span class="pk-line">🛋 ${i.kategoriya ? `${escapeHtml(i.kategoriya)} · ` : ''}<b>${escapeHtml(i.model)}</b> × ${i.soni}${i.matrasId ? '' : ' <span class="sk-muted">(matrassiz)</span>'}</span>`)).join('')}${(l.skladItems || []).some((i) => i.yonalish === 'matras') ? `<span class="sk-muted">${l.skladCut ? 'Matras skladdan ayirildi ✓' : 'Yuborilganda matras skladdan ayiriladi'}</span>` : ''}</span></div>` : ''}
+    ${l.izoh ? `<div class="view-row"><span class="k">📝 Tavsif</span><span class="v">${escapeHtml(l.izoh)}</span></div>` : ''}
     ${isOwner() && l.sotuvchi ? `<div class="view-row"><span class="k">🛍 Sotuvchi</span><span class="v">${escapeHtml(l.sotuvchi.ism)}</span></div>` : ''}
     ${isOwner() && l.zalog ? `<div class="view-row"><span class="k">💵 Zalog</span><span class="v mono">${fmtMoney(l.zalog.summa)} so'm<br><span class="muted">${escapeHtml(l.zalog.sana || '')}${l.zalog.kim ? ' · ' + escapeHtml(l.zalog.kim) : ''}${l.zalog.izoh ? ' · ' + escapeHtml(l.zalog.izoh) : ''}</span></span></div>` : ''}
     <div class="view-row"><span class="k">Jo'natish sanasi</span><span class="v">${l.sana}</span></div>
@@ -741,8 +690,7 @@ document.querySelectorAll('.status-quick-btn').forEach((btn) => {
       let msg = `Holat "${HOLAT_LABEL[btn.dataset.holat]}" ga almashtirildi ✓`;
       let warn = false;
       if (btn.dataset.holat === 'yashil') {
-        if (updated.skladCut && !wasCut) msg += ` · 📦 Skladdan ayirildi: ${updated.skladItems.map((i) => `${i.model} ×${i.soni}`).join(', ')}`;
-        else if (!(updated.skladItems || []).length) { msg = "⚠ Yuborildi qilindi, lekin bu yukda sklad mahsuloti tanlanmagan, shuning uchun skladdan ayirilmadi. «Tahrirlash» orqali mahsulot qo'shing."; warn = true; }
+        if (updated.skladCut && !wasCut) msg += ` · 🛏 Skladdan ayirildi: ${updated.skladItems.filter((i) => i.yonalish === 'matras').map((i) => `${i.model} ×${i.soni}`).join(', ')}`;
       } else if (wasCut && !updated.skladCut) msg += ' · 📦 Sklad qaytarildi';
       showToast(msg, warn);
       await refresh();
@@ -772,7 +720,7 @@ document.getElementById('printLoadBtn').onclick = () => {
       <tr><td>Kategoriya</td><td>${escapeHtml(l.kategoriya?.nomi || '—')}</td></tr>
       ${l.matras?.bor ? `<tr><td>Matras</td><td>${escapeHtml(l.matras.turi)}</td></tr>` : ''}
       ${(l.skladItems || []).length ? `<tr><td>Mahsulotlar</td><td>${l.skladItems.map((i) => `${i.yonalish === 'matras' ? '' : `${escapeHtml(i.kategoriya)} — `}${escapeHtml(i.model)} × ${i.soni}`).join('<br>')}</td></tr>` : ''}
-      ${l.izoh ? `<tr><td>Izoh</td><td>${escapeHtml(l.izoh)}</td></tr>` : ''}
+      ${l.izoh ? `<tr><td>Tavsif</td><td>${escapeHtml(l.izoh)}</td></tr>` : ''}
       <tr><td>Jo'natish sanasi</td><td>${l.sana}</td></tr>
       <tr><td>Hudud</td><td>${escapeHtml(addrLine)}</td></tr>
       <tr><td>Dom / padyez / etaj</td><td>${escapeHtml(domLine)}</td></tr>
@@ -1025,7 +973,7 @@ function renderReport() {
   `;
   document.getElementById('reportModal').classList.remove('hidden');
   renderSkladReport();
-  renderMatrasMonth();
+  renderMatrasWeek();
   renderZalogReport();
 
   document.getElementById('printKassaReportBtn').onclick = () => printKassaReport(days, umumiy);
@@ -1311,137 +1259,77 @@ document.getElementById('loRemoveLoginBtn').onclick = async () => {
 };
 loModal.addEventListener('click', (e) => { if (e.target === loModal) closeModals(); });
 
-// ---------------- Sklad: yo'nalish -> kategoriya -> model ----------------
+// ---------------- Sklad: Mebel (kategoriya → model, matras belgisi) + Matras (qoldiq hisobi) ----------------
 const YON_ICON = { matras: '🛏', mebel: '🛋', zapchast: '🔧' };
 const catOf = (m) => sklad.categories.find((c) => c.id === m.categoryId);
-const YON_NOMI = { matras: 'Matras', mebel: 'Mebel', zapchast: 'Zapchast' };
+const YON_NOMI = { matras: 'Matras', mebel: 'Mebel' };
 let sklad = { yonalishlar: [], categories: [], models: [] };
-let formItems = [];     // yuk formasida tanlangan mahsulotlar: { modelId, soni, model, kategoriya, yonalish }
-let pickYon = 'mebel';  // formadagi tanlash paneli
-let skTab = 'matras';   // Sklad oynasidagi tab
+let skTab = 'mebel';   // Sklad oynasidagi tab: 'mebel' (kategoriya → model) yoki 'matras' (qoldiq)
+let picker = null;     // yuk formasidagi tanlash paneli (pastda yaratiladi)
 
 async function fetchSklad() {
   const res = await fetch('/api/sklad');
-  if (res.ok) sklad = await res.json();
+  if (res.ok) { sklad = await res.json(); if (picker) picker.setSklad(sklad); }
 }
 function modelInfo(id) {
   const m = sklad.models.find((x) => x.id === id);
   if (!m) return null;
   return { m, c: sklad.categories.find((x) => x.id === m.categoryId) };
 }
-const yonList = () => (sklad.yonalishlar.length ? sklad.yonalishlar : Object.keys(YON_NOMI).map((id) => ({ id, nomi: YON_NOMI[id] })));
-const tabsHtml = (active) => yonList().map((y) => `<button type="button" class="sk-tab ${y.id === active ? 'active' : ''}" data-y="${y.id}">${YON_ICON[y.id] || ''} ${escapeHtml(y.nomi)}</button>`).join('');
+const matrasList = () => sklad.models.filter((x) => catOf(x)?.yonalish === 'matras').sort((a, b) => a.nomi.localeCompare(b.nomi, undefined, { numeric: true }));
+const tabsHtml = (active) => [['mebel', '🛋 Mebel — model va matras'], ['matras', '🛏 Matras — qoldiq']]
+  .map(([id, label]) => `<button type="button" class="sk-tab ${id === active ? 'active' : ''}" data-y="${id}">${label}</button>`).join('');
 
-// ----- Yuk formasidagi tanlash paneli -----
-const pickCat = document.getElementById('skPickCat');
-const pickModel = document.getElementById('skPickModel');
-const pickQty = document.getElementById('skPickQty');
-
-const pickCatLabel = pickCat.closest('label');
-function fillPickModels() {
-  // Matrasda kategoriya yo'q: hamma matras modellari to'g'ridan-to'g'ri ro'yxatda
-  const models = pickYon === 'matras'
-    ? sklad.models.filter((m) => catOf(m)?.yonalish === 'matras').sort((a, b) => a.nomi.localeCompare(b.nomi, undefined, { numeric: true }))
-    : sklad.models.filter((m) => m.categoryId === pickCat.value);
-  const empty = pickYon === 'matras' ? "Matras modeli yo'q" : "Bu kategoriyada model yo'q";
-  fillSelect(pickModel, models, models.length ? 'Modelni tanlang' : empty, null, null, (m) => `${m.nomi} (skladda: ${m.qoldiq})`);
-}
-function renderPicker() {
-  document.getElementById('skPickTabs').innerHTML = tabsHtml(pickYon);
-  pickCatLabel.style.display = pickYon === 'matras' ? 'none' : '';
-  const cats = sklad.categories.filter((c) => c.yonalish === pickYon && !c.yashirin);
-  fillSelect(pickCat, cats, cats.length ? 'Kategoriyani tanlang' : "Kategoriya yo'q", null, null, (c) => c.nomi);
-  fillPickModels();
-  pickQty.value = 1;
-  renderPicked();
-  document.getElementById('skPickHint').textContent = sklad.models.length
-    ? 'Yuk "🟢 Yuborildi" bo\'lganda tanlangan mahsulotlar skladdan avtomatik ayiriladi.'
-    : "Sklad hali bo'sh. Avval yuqoridagi 🏬 Sklad tugmasidan model qo'shing.";
-}
-function renderPicked() {
-  const box = document.getElementById('skPickedList');
-  box.innerHTML = formItems.map((it, idx) => {
-    const info = modelInfo(it.modelId);
-    const isMat = (info ? info.c?.yonalish : it.yonalish) === 'matras';
-    const name = info ? `${YON_ICON[info.c?.yonalish] || '📦'} ${isMat ? '' : `${escapeHtml(info.c?.nomi || '')} · `}${escapeHtml(info.m.nomi)}` : `${isMat || !it.kategoriya ? '' : `${escapeHtml(it.kategoriya)} · `}${escapeHtml(it.model || '')} (o'chirilgan)`;
-    const bor = info ? Number(info.m.qoldiq) || 0 : 0;
-    const note = !info ? '' : (it.soni > bor ? `<span class="sk-warn">skladda ${bor} ta, yetmaydi</span>` : `<span class="sk-ok">skladda ${bor}</span>`);
-    return `<div class="sk-line"><span class="sk-name">${name}</span>${note}<input type="number" min="1" step="1" value="${it.soni}" data-pi="${idx}" /><button type="button" class="danger-btn small-btn" data-prm="${idx}" title="Olib tashlash">✕</button></div>`;
-  }).join('');
-}
-document.getElementById('skPickTabs').addEventListener('click', (e) => {
-  const y = e.target.closest('[data-y]')?.dataset.y;
-  if (!y) return;
-  pickYon = y;
-  renderPicker();
-});
-pickCat.addEventListener('change', fillPickModels);
-document.getElementById('skPickAdd').onclick = () => {
-  const info = modelInfo(pickModel.value);
-  const soni = Math.floor(Number(pickQty.value));
-  if (!info) { showToast('Modelni tanlang', true); return; }
-  if (!(soni > 0)) { showToast("Sonini kiriting (1 dan boshlab)", true); return; }
-  const ex = formItems.find((i) => i.modelId === info.m.id);
-  if (ex) ex.soni += soni;
-  else formItems.push({ modelId: info.m.id, soni, model: info.m.nomi, kategoriya: info.c?.nomi || '', yonalish: info.c?.yonalish });
-  pickQty.value = 1;
-  pickModel.value = '';
-  renderPicked();
-};
-document.getElementById('skPickedList').addEventListener('click', (e) => {
-  const i = e.target.closest('[data-prm]')?.dataset.prm;
-  if (i === undefined) return;
-  formItems.splice(Number(i), 1);
-  renderPicked();
-});
-document.getElementById('skPickedList').addEventListener('change', (e) => {
-  const i = e.target.dataset.pi;
-  if (i === undefined) return;
-  const v = Math.floor(Number(e.target.value));
-  if (v > 0) formItems[Number(i)].soni = v;
-  renderPicked();
-});
+// ----- Yuk formasidagi tanlash paneli: Kategoriya → Model → Matras → Zakazga qo'shish (umumiy modul: picker.js) -----
+picker = createPicker(document.getElementById('pickerRoot'), { toast: (m, err) => showToast(m, err) });
 
 // ----- Sklad oynasi -----
 const skModal = document.getElementById('skModal');
 const skManage = () => hasPerm('team');
 
+function matrasBadge(x) {
+  if (!x.matrasKetadi) return '<span class="sk-badge no">matras ketmaydi</span>';
+  const names = (x.matrasIds || []).map((id) => sklad.models.find((k) => k.id === id)?.nomi).filter(Boolean);
+  return `<span class="sk-badge yes">🛏 matras ketadi${names.length ? `: ${escapeHtml(names.join(', '))}` : ' · istalgan'}</span>`;
+}
 function skModelRow(x, m) {
-  const q = Number(x.qoldiq) || 0;
-  const thumb = skTab === 'mebel' && x.rasm ? `<img class="sk-thumb" src="/api/sklad/models/${x.id}/rasm?v=${x.rasm.v}" alt="" data-view="${x.id}" loading="lazy" />` : '';
-  const photoBtns = skTab === 'mebel'
-    ? `<button class="ghost-btn small-btn" data-sk="photo" data-id="${x.id}">📷 ${x.rasm ? 'Almashtirish' : 'Surat'}</button>${x.rasm ? `<button class="ghost-btn small-btn" data-sk="delphoto" data-id="${x.id}" title="Suratni olib tashlash">✕ Surat</button>` : ''}`
-    : '';
+  if (skTab === 'matras') {
+    const q = Number(x.qoldiq) || 0;
+    const btns = m
+      ? `<button class="ghost-btn small-btn" data-sk="kirim" data-id="${x.id}">＋ Kirim</button><button class="ghost-btn small-btn" data-sk="fix" data-id="${x.id}" title="Sanab chiqib, qoldiqni to'g'rilash">✎ Sanoq</button><button class="ghost-btn small-btn" data-sk="renmodel" data-id="${x.id}" title="Nomini o'zgartirish">Aa</button><button class="danger-btn small-btn" data-sk="delmodel" data-id="${x.id}" title="O'chirish">🗑</button>`
+      : '';
+    return `<div class="sk-model"><span class="sk-mname">${escapeHtml(x.nomi)}</span><span class="sk-qty ${q <= 0 ? 'neg' : ''}">${q}</span>${btns}</div>`;
+  }
+  const thumb = x.rasm ? `<img class="sk-thumb" src="/api/sklad/models/${x.id}/rasm?v=${x.rasm.v}" alt="" data-view="${x.id}" loading="lazy" />` : '';
   const btns = m
-    ? `<button class="ghost-btn small-btn" data-sk="kirim" data-id="${x.id}">＋ Kirim</button><button class="ghost-btn small-btn" data-sk="fix" data-id="${x.id}" title="Sanab chiqib, qoldiqni to'g'rilash">✎ Sanoq</button>${photoBtns}<button class="ghost-btn small-btn" data-sk="renmodel" data-id="${x.id}" title="Nomini o'zgartirish">Aa</button><button class="danger-btn small-btn" data-sk="delmodel" data-id="${x.id}" title="O'chirish">🗑</button>`
+    ? `<button class="ghost-btn small-btn" data-sk="cfgmat" data-id="${x.id}" title="Matras ketadimi, qaysi matras">🛏 Matras</button><button class="ghost-btn small-btn" data-sk="photo" data-id="${x.id}">📷 ${x.rasm ? 'Almashtirish' : 'Surat'}</button>${x.rasm ? `<button class="ghost-btn small-btn" data-sk="delphoto" data-id="${x.id}" title="Suratni olib tashlash">✕ Surat</button>` : ''}<button class="ghost-btn small-btn" data-sk="renmodel" data-id="${x.id}" title="Nomini o'zgartirish">Aa</button><button class="danger-btn small-btn" data-sk="delmodel" data-id="${x.id}" title="O'chirish">🗑</button>`
     : '';
-  return `<div class="sk-model">${thumb}<span class="sk-mname">${escapeHtml(x.nomi)}</span><span class="sk-qty ${q <= 0 ? 'neg' : ''}">${q}</span>${btns}</div>`;
+  return `<div class="sk-model">${thumb}<span class="sk-mname">${escapeHtml(x.nomi)}<br>${matrasBadge(x)}</span>${btns}</div>`;
 }
 function renderSkladModal() {
   document.getElementById('skTabs').innerHTML = tabsHtml(skTab);
   const m = skManage();
   let html = '';
   if (skTab === 'matras') {
-    // Matras: kategoriya yo'q — modellarning o'zi
-    const models = sklad.models.filter((x) => catOf(x)?.yonalish === 'matras').sort((a, b) => a.nomi.localeCompare(b.nomi, undefined, { numeric: true }));
+    const models = matrasList();
     const total = models.reduce((sum, x) => sum + (Number(x.qoldiq) || 0), 0);
     html = (m ? `<button class="ghost-btn" data-sk="addmatras">➕ Yangi matras modeli</button>` : '')
       + `<div class="sk-cat"><div class="sk-cat-head"><b class="sk-grow">Matraslar <span class="sk-muted">${models.length} model · jami ${total} dona</span></b></div>
         ${models.map((x) => skModelRow(x, m)).join('') || `<div class="empty-day">Hali matras modeli yo'q${m ? ": «➕ Yangi matras modeli» ni bosing" : ''}</div>`}
-      </div>`;
+      </div>
+      <p class="report-note">Sklad faqat matras qoldig'ini hisoblaydi. Mebel modellari soni hisoblanmaydi.</p>`;
   } else {
-    const cats = sklad.categories.filter((c) => c.yonalish === skTab && !c.yashirin);
-    html = m ? `<button class="ghost-btn" data-sk="addcat">➕ Yangi kategoriya (${escapeHtml(YON_NOMI[skTab])})</button>` : '';
+    const cats = sklad.categories.filter((c) => c.yonalish === 'mebel' && !c.yashirin);
+    html = m ? `<button class="ghost-btn" data-sk="addcat">➕ Yangi kategoriya</button>` : '';
     html += cats.map((c) => {
       const models = sklad.models.filter((x) => x.categoryId === c.id);
-      const total = models.reduce((sum, x) => sum + (Number(x.qoldiq) || 0), 0);
       return `<div class="sk-cat">
-        <div class="sk-cat-head"><b class="sk-grow">${escapeHtml(c.nomi)} <span class="sk-muted">${models.length} model · jami ${total} dona</span></b>
+        <div class="sk-cat-head"><b class="sk-grow">${escapeHtml(c.nomi)} <span class="sk-muted">${models.length} model</span></b>
           ${m ? `<button class="ghost-btn small-btn" data-sk="addmodel" data-id="${c.id}">＋ Model</button><button class="ghost-btn small-btn" data-sk="rencat" data-id="${c.id}" title="Nomini o'zgartirish">✎</button><button class="danger-btn small-btn" data-sk="delcat" data-id="${c.id}" title="Kategoriyani o'chirish">🗑</button>` : ''}
         </div>
         ${models.map((x) => skModelRow(x, m)).join('') || `<div class="empty-day">Hali model yo'q${m ? ": «＋ Model» ni bosing" : ''}</div>`}
       </div>`;
-    }).join('') || `<div class="empty-day">Bu yo'nalishda hali kategoriya yo'q</div>`;
+    }).join('') || `<div class="empty-day">Hali kategoriya yo'q${m ? ": «➕ Yangi kategoriya» ni bosing" : ''}</div>`;
   }
   document.getElementById('skBody').innerHTML = html;
 }
@@ -1457,6 +1345,37 @@ document.getElementById('skTabs').addEventListener('click', (e) => {
   const y = e.target.closest('[data-y]')?.dataset.y;
   if (y) { skTab = y; renderSkladModal(); }
 });
+
+// ----- Modelga matras ketishini belgilash oynasi -----
+const matCfgModal = document.getElementById('matCfgModal');
+let cfgModelId = null;
+function openMatCfg(modelId) {
+  const x = sklad.models.find((k) => k.id === modelId);
+  if (!x) return;
+  cfgModelId = modelId;
+  document.getElementById('mcTitle').textContent = `🛏 ${x.nomi}: matras`;
+  document.getElementById('mcKetadi').checked = !!x.matrasKetadi;
+  const list = matrasList();
+  document.getElementById('mcList').innerHTML = list.length
+    ? list.map((mm) => `<label class="mc-item"><input type="checkbox" value="${mm.id}" ${(x.matrasIds || []).includes(mm.id) ? 'checked' : ''} /><span>${escapeHtml(mm.nomi)}</span></label>`).join('')
+    : '<div class="empty-day">Matras modeli yo\'q. Avval «🛏 Matras — qoldiq» bo\'limida matras qo\'shing.</div>';
+  document.getElementById('mcWrap').classList.toggle('pk-hide', !x.matrasKetadi);
+  matCfgModal.classList.remove('hidden');
+}
+document.getElementById('mcKetadi').addEventListener('change', (e) => document.getElementById('mcWrap').classList.toggle('pk-hide', !e.target.checked));
+document.getElementById('mcSave').onclick = async () => {
+  const ketadi = document.getElementById('mcKetadi').checked;
+  const ids = [...document.querySelectorAll('#mcList input:checked')].map((i) => i.value);
+  try {
+    await apiJson(`/api/sklad/models/${cfgModelId}/matras`, 'PUT', { ketadi, ids });
+    await fetchSklad();
+    renderSkladModal();
+    matCfgModal.classList.add('hidden');
+    showToast('Saqlandi ✓');
+  } catch (err) { showToast(err.message, true); }
+};
+document.getElementById('mcCancel').onclick = () => matCfgModal.classList.add('hidden');
+matCfgModal.addEventListener('click', (e) => { if (e.target === matCfgModal) matCfgModal.classList.add('hidden'); });
 
 const askNum = (text, def) => {
   const v = prompt(text, def === undefined ? '' : String(def));
@@ -1479,9 +1398,9 @@ document.getElementById('skBody').addEventListener('click', async (e) => {
   const cat = sklad.categories.find((x) => x.id === id);
   try {
     if (act === 'addcat') {
-      const nomi = prompt(`Yangi ${YON_NOMI[skTab].toLowerCase()} kategoriyasi nomi:`);
+      const nomi = prompt('Yangi kategoriya nomi (masalan: Spalni, Shkaf, Divan):');
       if (!nomi || !nomi.trim()) return;
-      await apiJson('/api/sklad/categories', 'POST', { yonalish: skTab, nomi: nomi.trim() });
+      await apiJson('/api/sklad/categories', 'POST', { yonalish: 'mebel', nomi: nomi.trim() });
     } else if (act === 'rencat') {
       const nomi = prompt('Kategoriya yangi nomi:', cat.nomi);
       if (!nomi || !nomi.trim() || nomi.trim() === cat.nomi) return;
@@ -1492,9 +1411,12 @@ document.getElementById('skBody').addEventListener('click', async (e) => {
     } else if (act === 'addmodel') {
       const nomi = prompt(`"${cat.nomi}" uchun yangi model nomi:`);
       if (!nomi || !nomi.trim()) return;
-      const q = askNum("Hozir skladda nechta bor? (bo'sh yoki 0 — yo'q)", 0);
-      if (q === null) return;
-      await apiJson('/api/sklad/models', 'POST', { categoryId: id, nomi: nomi.trim(), qoldiq: q > 0 ? q : 0 });
+      const created = await apiJson('/api/sklad/models', 'POST', { categoryId: id, nomi: nomi.trim() });
+      await fetchSklad();
+      renderSkladModal();
+      showToast('Model qo\'shildi ✓ — endi unga matras ketishini belgilang');
+      openMatCfg(created.id); // darrov: matras ketadimi, qaysi matras
+      return;
     } else if (act === 'addmatras') {
       const nomi = prompt("Yangi matras modeli nomi (masalan: 160x200 ortopedik):");
       if (!nomi || !nomi.trim()) return;
@@ -1513,6 +1435,9 @@ document.getElementById('skBody').addEventListener('click', async (e) => {
       if (n === null) return;
       if (!(n > 0)) { showToast("Sonni to'g'ri kiriting", true); return; }
       await apiJson(`/api/sklad/models/${id}/kirim`, 'POST', { soni: n });
+    } else if (act === 'cfgmat') {
+      openMatCfg(id);
+      return;
     } else if (act === 'photo') {
       photoModelId = id;
       skFile.click();
@@ -1528,7 +1453,6 @@ document.getElementById('skBody').addEventListener('click', async (e) => {
     }
     await fetchSklad();
     renderSkladModal();
-    renderPicker();
     showToast('Saqlandi ✓');
   } catch (err) {
     if (err.message !== 'Bekor qilindi') showToast(err.message, true);
@@ -1592,7 +1516,7 @@ skFile.addEventListener('change', async () => {
   } catch (err) { showToast(err.message, true); }
 });
 
-// ----- Hisobot: har kuni nima ketdi, bugunga nima kerak -----
+// ----- Hisobot: bugun qancha matras ketdi, qancha kerak, skladda nechta qoldi (faqat matras) -----
 async function renderSkladReport() {
   const box = document.getElementById('skReport');
   if (!box) return;
@@ -1600,16 +1524,8 @@ async function renderSkladReport() {
   let r;
   try { r = await apiJson('/api/sklad/hisobot', 'GET'); } catch (err) { box.innerHTML = ''; return; }
   const day = r.days.find((d) => d.sana === r.today);
-  const order = ['matras', 'mebel', 'zapchast'];
   const bor = (m) => (m.skladda === null ? 0 : m.skladda);       // o'chirilgan model = skladda yo'q
   const kamOf = (m) => Math.max(0, m.qoldi - bor(m));            // hali ketmagan qismi skladda yetmasa
-  const stats = (y) => `<div class="sk-stats">
-        <div class="sk-stat need"><b>${y.jami}</b><span>Bugunga kerak</span></div>
-        <div class="sk-stat go"><b>${y.ketdi}</b><span>Ketdi</span></div>
-        <div class="sk-stat"><b>${y.qoldi}</b><span>Hali ketishi kerak</span></div>
-      </div>`;
-
-  // 1) Matras: skladda yetmasa — qizil chiziqda "Bugunga kerak matraslar"
   const matras = day ? day.yonalishlar.matras : null;
   const matKam = matras ? matras.modellar.filter((m) => kamOf(m) > 0) : [];
   const alert = matKam.length ? `<div class="sk-alert">
@@ -1617,7 +1533,6 @@ async function renderSkladReport() {
       ${matKam.map((m) => `<div class="sk-alert-row"><b>${escapeHtml(m.model)}</b>: kerak ${m.qoldi} ta, skladda ${bor(m)} ta → <b>${kamOf(m)} ta yetmaydi</b></div>`).join('')}
     </div>` : '';
 
-  // 2) Matras bloki: qaysi model qancha ketdi, qaysi model qancha kerak
   const matrasBlock = () => {
     const head = `${YON_ICON.matras} Matras — bugun`;
     if (!matras || !matras.jami) return `<div class="sk-rep-block big"><div class="sk-rep-head">${head}</div><div class="sk-muted">Bugun matras yozilmagan</div></div>`;
@@ -1626,7 +1541,11 @@ async function renderSkladReport() {
     const row = (m, right) => `<div class="sk-list-row"><span><b>${escapeHtml(m.model)}</b></span><span class="sk-r">${right}</span></div>`;
     return `<div class="sk-rep-block big">
       <div class="sk-rep-head">${head}</div>
-      ${stats(matras)}
+      <div class="sk-stats">
+        <div class="sk-stat need"><b>${matras.jami}</b><span>Bugunga kerak</span></div>
+        <div class="sk-stat go"><b>${matras.ketdi}</b><span>Ketdi</span></div>
+        <div class="sk-stat"><b>${matras.qoldi}</b><span>Hali ketishi kerak</span></div>
+      </div>
       <div class="sk-list-title">✅ Bugun ketgan matraslar</div>
       ${sent.length ? sent.map((m) => row(m, `${m.ketdi} ta`)).join('') : '<div class="sk-muted">Hali matras ketmagan</div>'}
       <div class="sk-list-title">📋 Bugunga kerak matraslar (hali ketmagan)</div>
@@ -1634,35 +1553,17 @@ async function renderSkladReport() {
     </div>`;
   };
 
-  // 3) Mebel / Zapchast: jadval
-  const tableBlock = (k) => {
-    const y = day ? day.yonalishlar[k] : null;
-    const head = `${YON_ICON[k]} ${YON_NOMI[k]} — bugun`;
-    if (!y || !y.jami) return `<div class="sk-rep-block"><div class="sk-rep-head">${head}</div><div class="sk-muted">Bugun ${YON_NOMI[k].toLowerCase()} yozilmagan</div></div>`;
-    const rows = y.modellar.map((m) => {
-      const kam = kamOf(m);
-      return `<tr><td>${escapeHtml(m.kategoriya)}<br><b>${escapeHtml(m.model)}</b></td><td class="mono">${m.jami}</td><td class="mono">${m.ketdi}</td><td class="mono">${m.qoldi}</td><td class="mono ${kam ? 'bad' : ''}">${m.skladda === null ? '—' : m.skladda}${kam ? `<br>⚠ ${kam} yetmaydi` : ''}</td></tr>`;
-    }).join('');
-    return `<div class="sk-rep-block">
-      <div class="sk-rep-head">${head}</div>
-      ${stats(y)}
-      <div class="report-scroll"><table class="report-table"><thead><tr><th>Model</th><th>Kerak</th><th>Ketdi</th><th>Qoldi</th><th>Skladda</th></tr></thead><tbody>${rows}</tbody></table></div>
-    </div>`;
-  };
-
   const dayRows = [...r.days].reverse().map((d) => {
-    const cells = order.map((k) => { const y = d.yonalishlar[k]; return `<td class="mono">${y.ketdi}<span class="sk-muted"> / ${y.jami}</span></td>`; }).join('');
-    return `<tr><td>${DAY_NAMES_BY_DOW[new Date(d.sana).getDay()]}<br><span class="sk-muted">${fmtShort(new Date(d.sana))}${d.sana === r.today ? ' · bugun' : ''}</span></td>${cells}</tr>`;
+    const y = d.yonalishlar.matras;
+    return `<tr><td>${DAY_NAMES_BY_DOW[new Date(d.sana).getDay()]}<br><span class="sk-muted">${fmtShort(new Date(d.sana))}${d.sana === r.today ? ' · bugun' : ''}</span></td><td class="mono">${y.ketdi}<span class="sk-muted"> / ${y.jami}</span></td></tr>`;
   }).join('');
   box.innerHTML = `
-    <h3 class="report-subhead" style="margin-top:0">🏬 Sklad hisoboti</h3>
+    <h3 class="report-subhead" style="margin-top:0">🏬 Matras sklad hisoboti</h3>
     ${alert}
     ${matrasBlock()}
-    ${tableBlock('mebel')}
-    ${tableBlock('zapchast')}
-    ${r.days.length ? `<h3 class="report-subhead">📅 Kunlar bo'yicha: ketdi / kerak</h3>
-    <div class="report-scroll"><table class="report-table"><thead><tr><th>Kun</th><th>🛏 Matras</th><th>🛋 Mebel</th><th>🔧 Zapchast</th></tr></thead><tbody>${dayRows}</tbody></table></div>
-    <p class="report-note">«Ketdi» — "Yuborildi" bo'lgan yuklardagi soni. «Kerak» — o'sha kunga yozilgan jami soni. Oxirgi 7 kun va keyingi 2 kun ko'rsatiladi.</p>` : ''}
+    ${r.days.length ? `<h3 class="report-subhead">📅 Kunlar bo'yicha matras: ketdi / kerak</h3>
+    <div class="report-scroll"><table class="report-table"><thead><tr><th>Kun</th><th>🛏 Matras</th></tr></thead><tbody>${dayRows}</tbody></table></div>
+    <p class="report-note">«Ketdi» — "Yuborildi" bo'lgan yuklardagi matras soni. «Kerak» — o'sha kunga yozilgan jami matras. Oxirgi 7 kun va keyingi 2 kun ko'rsatiladi. Mebel modellari hisoblanmaydi.</p>` : ''}
   `;
 }
 
@@ -1996,14 +1897,14 @@ function openPendingView(p) {
     ${row('Kategoriya', escapeHtml(p.kategoriya?.nomi || '—'))}
     ${row('Nomi', escapeHtml(p.nomi || '—'))}
     ${p.matras?.bor ? row('Matras', escapeHtml(p.matras.turi)) : ''}
-    ${row('Sklad mahsulotlari', (p.skladItems || []).length ? p.skladItems.map((i) => `${YON_ICON[i.yonalish] || '📦'} ${i.yonalish === 'matras' ? '' : `${escapeHtml(i.kategoriya)} · `}<b>${escapeHtml(i.model)}</b> × ${i.soni}`).join('<br>') : '<span class="sk-warn-text">Tanlanmagan</span>')}
+    ${row('Yuklar', (p.skladItems || []).length ? p.skladItems.map((i) => `${YON_ICON[i.yonalish] || '📦'} ${i.yonalish === 'matras' ? '' : `${escapeHtml(i.kategoriya)} · `}<b>${escapeHtml(i.model)}</b> × ${i.soni}${i.fromModel ? ` <span class="sk-muted">(${escapeHtml(i.fromModel)} uchun)</span>` : ''}`).join('<br>') : '<span class="sk-muted">Yuk tanlanmagan (faqat tavsif)</span>')}
     ${row('Manzil', escapeHtml(addr))}
     ${row('Astatka', `${fmtMoney(p.astatka)} so'm`)}
     ${row('💵 Zalog', p.zalogSumma ? `<b>${fmtMoney(p.zalogSumma)} so'm</b>${p.zalogIzoh ? `<br><span class="muted">${escapeHtml(p.zalogIzoh)}</span>` : ''}` : 'Yo\'q')}
     ${row('1-telefon', escapeHtml(p.tel1 || '—'))}
     ${row('2-telefon', escapeHtml(p.tel2 || '—'))}
     ${row('Filial', escapeHtml(p.filial?.nomi || '—'))}
-    ${p.izoh ? row('Izoh', escapeHtml(p.izoh)) : ''}
+    ${p.izoh ? row('📝 Tavsif', escapeHtml(p.izoh)) : ''}
   `;
   document.getElementById('pendingViewModal').classList.remove('hidden');
 }
@@ -2049,63 +1950,76 @@ document.getElementById('pvEditBtn').onclick = () => {
 };
 
 // ============================================================
-//  HISOBOT: 1 oylik MATRAS (nima uchun qancha kerak / nimaga ketdi) + chop etish
+//  HISOBOT: 1 haftalik MATRAS (qaysi matras qancha kerak bo'ldi, qancha ketdi, skladda qancha qoldi) + chop etish
+//  Faqat matras hisoblanadi. Mebel modellari hisobga kirmaydi.
 // ============================================================
-function matrasMonthData(from, to) {
+function matrasWeekData(from, to) {
   const models = new Map();
   const orders = [];
+  const dayKeys = [];
+  for (let d = new Date(`${from}T00:00:00`); toISO(d) <= to && dayKeys.length < 62; d = addDays(d, 1)) dayKeys.push(toISO(d));
   loads.forEach((l) => {
     if (!l.sana || l.sana < from || l.sana > to) return;
     const sent = l.holat === 'yashil';
     (l.skladItems || []).filter((i) => i.yonalish === 'matras').forEach((i) => {
       if (!models.has(i.modelId)) {
         const m = sklad.models.find((x) => x.id === i.modelId);
-        models.set(i.modelId, { model: i.model, jami: 0, ketdi: 0, qoldi: 0, zakaz: 0, skladda: m ? (Number(m.qoldiq) || 0) : null });
+        models.set(i.modelId, { model: i.model, jami: 0, ketdi: 0, qoldi: 0, zakaz: 0, skladda: m ? (Number(m.qoldiq) || 0) : null, days: {} });
       }
       const r = models.get(i.modelId);
       r.jami += i.soni; r.zakaz += 1;
       if (sent) r.ketdi += i.soni; else r.qoldi += i.soni;
-      orders.push({ sana: l.sana, tartib: l.tartib || 0, nomi: l.nomi || '—', hudud: l.manzil?.hudud || '', filial: l.filial?.nomi || '', model: i.model, soni: i.soni, sent });
+      const dd = r.days[l.sana] || (r.days[l.sana] = { jami: 0, ketdi: 0 });
+      dd.jami += i.soni; if (sent) dd.ketdi += i.soni;
+      orders.push({ sana: l.sana, tartib: l.tartib || 0, nomi: l.nomi || '—', hudud: l.manzil?.hudud || '', filial: l.filial?.nomi || '', model: i.model, mebel: i.fromModel || '', soni: i.soni, sent });
     });
   });
   orders.sort((a, b) => a.sana.localeCompare(b.sana) || a.tartib - b.tartib || a.model.localeCompare(b.model));
   const rows = [...models.values()].sort((a, b) => b.jami - a.jami || a.model.localeCompare(b.model, undefined, { numeric: true }));
   const sum = rows.reduce((s, r) => ({ jami: s.jami + r.jami, ketdi: s.ketdi + r.ketdi, qoldi: s.qoldi + r.qoldi }), { jami: 0, ketdi: 0, qoldi: 0 });
-  // Eski «Matras o'lchami» belgisi bo'yicha (sklad modelisiz yozilgan zakazlar)
-  const eski = {};
-  loads.forEach((l) => { if (l.sana >= from && l.sana <= to && l.matras?.bor) eski[l.matras.turi || 'Matras'] = (eski[l.matras.turi || 'Matras'] || 0) + 1; });
-  return { rows, orders, sum, eski };
+  return { rows, orders, sum, dayKeys };
 }
 const matYetmaydi = (r) => (r.skladda === null ? r.qoldi : Math.max(0, r.qoldi - r.skladda));
 
-function matrasMonthTables(d, forPrint) {
+function matrasWeekTables(d, forPrint) {
   const cls = forPrint ? 'print-table' : 'report-table';
   const sumRows = d.rows.map((r) => {
     const kam = matYetmaydi(r);
-    return `<tr><td><b>${escapeHtml(r.model)}</b></td><td class="mono">${r.zakaz}</td><td class="mono">${r.jami}</td><td class="mono">${r.ketdi}</td><td class="mono">${r.qoldi}</td><td class="mono">${r.skladda === null ? '—' : r.skladda}${kam ? ` <span class="${forPrint ? '' : 'sk-bad'}">⚠ ${kam} yetmaydi</span>` : ''}</td></tr>`;
+    return `<tr><td><b>${escapeHtml(r.model)}</b></td><td class="mono">${r.zakaz}</td><td class="mono">${r.jami}</td><td class="mono">${r.ketdi}</td><td class="mono">${r.qoldi}</td><td class="mono"><b>${r.skladda === null ? '—' : r.skladda}</b>${kam ? ` <span class="${forPrint ? '' : 'sk-bad'}">⚠ ${kam} yetmaydi</span>` : ''}</td></tr>`;
   }).join('');
+  // Kunlar bo'yicha: har bir matras har kuni nechta ketdi (kerak)
+  const showDays = d.dayKeys.length <= 14 && d.rows.length > 0;
+  const dayHead = d.dayKeys.map((k) => `<th>${DAY_NAMES_BY_DOW[new Date(`${k}T00:00:00`).getDay()].slice(0, 3)}<br><span class="muted">${k.slice(5)}</span></th>`).join('');
+  const dayRows = d.rows.map((r) => `<tr><td><b>${escapeHtml(r.model)}</b></td>${d.dayKeys.map((k) => { const x = r.days[k]; return `<td class="mono">${x ? `<b>${x.ketdi}</b><span class="muted"> / ${x.jami}</span>` : '<span class="muted">·</span>'}</td>`; }).join('')}</tr>`).join('');
   const orderRows = d.orders.map((o) => `<tr><td>${escapeHtml(o.sana)}</td><td>${escapeHtml(o.nomi)}${o.filial ? `<br><span class="muted">${escapeHtml(o.filial)}</span>` : ''}</td><td>${escapeHtml(o.hudud || '—')}</td><td>${escapeHtml(o.model)}</td><td class="mono">${o.soni}</td><td>${o.sent ? '✅ Ketdi' : '📋 Kerak'}</td></tr>`).join('');
   return `
-    <table class="${cls}"><thead><tr><th>Matras modeli</th><th>Zakazlar</th><th>Jami kerak</th><th>Ketdi</th><th>Hali ketmagan</th><th>Skladda</th></tr></thead>
+    <table class="${cls}"><thead><tr><th>Matras</th><th>Zakazlar</th><th>Jami kerak</th><th>Ketdi</th><th>Hali ketmagan</th><th>Skladda qoldi</th></tr></thead>
       <tbody>${sumRows || '<tr><td colspan="6">Bu davrda matras yozilgan zakaz yo\'q</td></tr>'}</tbody>
       ${d.rows.length ? `<tfoot><tr><td><b>Jami</b></td><td></td><td class="mono"><b>${d.sum.jami}</b></td><td class="mono"><b>${d.sum.ketdi}</b></td><td class="mono"><b>${d.sum.qoldi}</b></td><td></td></tr></tfoot>` : ''}
     </table>
+    ${showDays ? `<h4 style="margin:16px 0 6px">Kunlar bo'yicha: ketdi / kerak</h4>
+    <div class="${forPrint ? '' : 'report-scroll'}"><table class="${cls}"><thead><tr><th>Matras</th>${dayHead}</tr></thead><tbody>${dayRows}</tbody></table></div>` : ''}
     ${d.orders.length ? `<h4 style="margin:16px 0 6px">Qaysi zakazga qaysi matras</h4>
-    <div class="${forPrint ? '' : 'report-scroll'}"><table class="${cls}"><thead><tr><th>Sana</th><th>Zakaz</th><th>Hudud</th><th>Matras</th><th>Soni</th><th>Holat</th></tr></thead><tbody>${orderRows}</tbody></table></div>` : ''}
-    ${Object.keys(d.eski).length ? `<p class="report-note">Eski «Matras o'lchami» belgisi bo'yicha (sklad modelisiz): ${Object.entries(d.eski).map(([k, v]) => `${escapeHtml(k)} — ${v} ta zakaz`).join(', ')}.</p>` : ''}`;
+    <div class="${forPrint ? '' : 'report-scroll'}"><table class="${cls}"><thead><tr><th>Sana</th><th>Zakaz</th><th>Hudud</th><th>Matras</th><th>Soni</th><th>Holat</th></tr></thead><tbody>${orderRows}</tbody></table></div>` : ''}`;
 }
 
-function renderMatrasMonth() {
+function renderMatrasWeek() {
   const box = document.getElementById('matrasMonthReport');
   if (!box) return;
   const prev = { from: document.getElementById('matFrom')?.value, to: document.getElementById('matTo')?.value };
-  const from = prev.from || toISO(addDays(new Date(), -29));
+  const from = prev.from || toISO(addDays(new Date(), -6));
   const to = prev.to || toISO(new Date());
-  const d = matrasMonthData(from, to);
+  const d = matrasWeekData(from, to);
+  const span = Math.round((new Date(`${to}T00:00:00`) - new Date(`${from}T00:00:00`)) / 86400000) + 1;
   box.innerHTML = `
     <div class="report-print-head">
-      <h3 class="report-subhead" style="margin:0;">🛏 Matras — 1 oylik hisobot</h3>
+      <h3 class="report-subhead" style="margin:0;">🛏 Matras — 1 haftalik hisobot</h3>
       <button class="ghost-btn small-btn" id="matPrintBtn">🖨️ Chop etish</button>
+    </div>
+    <div class="mat-presets">
+      <button type="button" class="sk-tab ${span === 7 ? 'active' : ''}" data-days="7">1 hafta</button>
+      <button type="button" class="sk-tab ${span === 14 ? 'active' : ''}" data-days="14">2 hafta</button>
+      <button type="button" class="sk-tab ${span === 30 ? 'active' : ''}" data-days="30">1 oy</button>
     </div>
     <div class="quick-assign-row" style="margin:8px 0">
       <label>Qaysi sanadan<input type="date" id="matFrom" value="${from}" /></label>
@@ -2116,16 +2030,22 @@ function renderMatrasMonth() {
       <div class="sk-stat go"><b>${d.sum.ketdi}</b><span>Ketdi</span></div>
       <div class="sk-stat"><b>${d.sum.qoldi}</b><span>Hali ketmagan</span></div>
     </div>
-    <div class="report-scroll">${matrasMonthTables(d, false)}</div>
-    <p class="report-note">Standart: oxirgi 30 kun. «Jami kerak» — shu kunlarga yozilgan matraslar, «Ketdi» — «Yuborildi» bo'lganlari, «Hali ketmagan» — hali yuborilmaganlari. Keyingi kunlardagi zakazlarni ko'rish uchun «sanagacha»ni suring.</p>`;
-  const rerender = () => renderMatrasMonth();
-  document.getElementById('matFrom').onchange = rerender;
-  document.getElementById('matTo').onchange = rerender;
+    <div class="report-scroll">${matrasWeekTables(d, false)}</div>
+    <p class="report-note">Standart: oxirgi 7 kun. «Jami kerak» — shu kunlarga yozilgan matraslar, «Ketdi» — «Yuborildi» bo'lganlari, «Hali ketmagan» — hali yuborilmaganlari, «Skladda qoldi» — hozirgi sklad qoldig'i. Faqat matras hisoblanadi, mebel modellari hisobga kirmaydi.</p>`;
+  document.getElementById('matFrom').onchange = renderMatrasWeek;
+  document.getElementById('matTo').onchange = renderMatrasWeek;
+  box.querySelectorAll('[data-days]').forEach((b) => {
+    b.onclick = () => {
+      document.getElementById('matTo').value = toISO(new Date());
+      document.getElementById('matFrom').value = toISO(addDays(new Date(), -(Number(b.dataset.days) - 1)));
+      renderMatrasWeek();
+    };
+  });
   document.getElementById('matPrintBtn').onclick = () => {
     const f = document.getElementById('matFrom').value; const t = document.getElementById('matTo').value;
-    const dd = matrasMonthData(f, t);
+    const dd = matrasWeekData(f, t);
     document.getElementById('printArea').innerHTML = `<h1>🛏 Matras hisoboti</h1><p><b>${escapeHtml(f)} — ${escapeHtml(t)}</b></p>
-      <p>Jami kerak: <b>${dd.sum.jami}</b> · Ketdi: <b>${dd.sum.ketdi}</b> · Hali ketmagan: <b>${dd.sum.qoldi}</b></p>${matrasMonthTables(dd, true)}`;
+      <p>Jami kerak: <b>${dd.sum.jami}</b> · Ketdi: <b>${dd.sum.ketdi}</b> · Hali ketmagan: <b>${dd.sum.qoldi}</b></p>${matrasWeekTables(dd, true)}`;
     window.print();
   };
 }

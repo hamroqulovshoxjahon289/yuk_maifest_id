@@ -129,3 +129,41 @@ Admin (ega) tizimda **hamma kim nima qilganini** ko'ra oladi. Xodim, zborshik, s
 **Xavfsizlik:** jurnal faqat qo'shiladi (uni tahrirlash yoki o'chirish yo'li yo'q). Ma'lumot `DATA_DIR/yuk-data/owners/<id>/kuzatuv.jsonl` da saqlanadi (oxirgi ~60 000 yozuv). Interfeys kodi alohida `owner-extra.js` faylida bo'lib, server uni faqat ega sessiyasiga beradi. Xodimning brauzeriga bu funksiya haqida hech narsa yuklanmaydi. Jurnal API'si (`/api/audit/*`) ham faqat ega + kod bilan ishlaydi.
 
 **Eslatma:** qurilma ma'lumoti brauzer yuboradigan ma'lumotdan aniqlanadi (ba'zi telefonlar modelini yashiradi, kompyuterda «noutbuk yoki stol kompyuteri»ni ajratib bo'lmaydi). Shuning uchun IP manzil va ekran o'lchami bilan birga ko'rsatiladi.
+
+
+## 🆕 Yangi yuk qo'shish oqimi: Kategoriya → Model → Matras (yangilanish)
+**Yuk qo'shish** tugmasi avvalgidek ochiladi, ichida yangi tanlash paneli:
+1. **Kategoriya** tanlanadi (Spalni, Shkaf, Divan...). Ro'yxat oxirida «🛏 Faqat matras» (faqat matras yuboriladigan zakazlar uchun).
+2. **Model** tanlanadi (shu kategoriyadagi modellar chiqadi; matras ketadiganlari 🛏 belgisi bilan).
+3. Model **matras ketadigan** bo'lsa: «🛏 Matras ketadi» belgisi + **qanday matras** (sklad matraslaridan) + matras soni chiqadi. Matras **ketmaydigan** bo'lsa, shunchaki zakazga qo'shiladi.
+4. **＋ Zakazga qo'shish** tugmasi yoki **Enter** bosiladi. Yuk «Zakazdagi yuklar» ro'yxatiga tushadi, panel esa yana tayyor: yana biror narsa birga ketsa, shu yerning o'zidan yana qo'shasiz (soni ro'yxatning o'zida o'zgartiriladi, ✕ bilan olib tashlanadi).
+5. Model nomidan boshqa qo'shimcha gap bo'lsa — **📝 Tavsif** maydoniga yoziladi (Enter bilan forma yuborilib ketmaydi, faqat «Saqlash» bosilganda saqlanadi).
+
+- Zakaz nomi va jadval kategoriyasi tanlangan modellardan **avtomatik** olinadi (alohida «Nomi» / «Kategoriya» maydoni yo'q).
+- Tanlangan, lekin «Zakazga qo'shish» bosilmagan model bo'lsa, «Saqlash» bosilganda o'zi qo'shiladi.
+- Sotuvchi sahifasi (`/sotuvchi.html`) ham xuddi shu paneldan foydalanadi.
+
+## 🏬 Sklad (yangilangan): faqat MATRAS hisoblanadi
+- **Zapchast yo'nalishi olib tashlandi** (eski ma'lumot faylda qoladi, lekin ko'rinmaydi).
+- **🛋 Mebel** bo'limi: kategoriya → model. Modellar **soni hisoblanmaydi**. Har bir modelga **🛏 Matras** tugmasi bilan belgilanadi: matras ketadimi, ketsa **qaysi matras(lar)** (bir nechtasini belgilash mumkin; hech biri belgilanmasa, zakazda istalgan matras tanlanadi). Yangi model qo'shilganda shu oyna darrov ochiladi. Mebel modeliga ixtiyoriy surat qo'yish avvalgidek.
+- **🛏 Matras** bo'limi: matras modellari va **qoldig'i** (＋ Kirim, ✎ Sanoq, harakatlar tarixi).
+- **«Yuborildi»** bosilganda faqat **matras** skladdan ayiriladi (qaytarilsa yoki yuk o'chirilsa — qaytadi, ikki marta ayirilmaydi). Skladda yetmasa ogohlantiradi.
+
+## 📊 Hisobot: 1 haftalik matras hisoboti
+- **📊 Hisobot** oynasida «🛏 Matras — 1 haftalik hisobot» (standart: oxirgi 7 kun; **1 hafta / 2 hafta / 1 oy** tugmalari va o'zingiz sana tanlash).
+- Har bir matras bo'yicha: nechta zakazga, **jami kerak bo'ldi**, **ketdi**, **hali ketmagan**, **skladda qoldi**, yetmasa ⚠.
+- **Kunlar bo'yicha** jadval: har bir matras har kuni nechta ketdi / kerak edi.
+- «Qaysi zakazga qaysi matras» ro'yxati va 🖨️ chop etish.
+- Tepada «Bugun» bloki: bugunga qancha matras kerak, qancha ketdi, skladda yetmaydiganlari qizil chiziqda.
+- **Mebel modellari hisobga kirmaydi** — faqat matras.
+
+## 🎨 Premium dizayn («Aurora glass»)
+- `public/premium.css` (barcha sahifalarga oxirida ulanadi) va `public/fx.js` (yengil effektlar). Eski stillarga tegilmagan: premium.css'ni olib tashlasangiz, sayt avvalgi ko'rinishiga qaytadi.
+- Harakatlanuvchi aurora fon va nozik to'r, shisha (glass) panel va oynalar, gradient yorug' chiziqlar.
+- Yuk kartochkalari holatiga qarab nur sochadi (🔴🟡🟢), bugungi kun ustuni yonib turadi.
+- Kursor ustida kartochkalarda nur ergashadi, tugmalarda to'lqin (ripple) va yaltirash, hisobot raqamlari sanab chiqiladi.
+- Chiroyli kirish sahifasi (kursorga qarab egiladigan shisha karta), yangi tanlash paneli, o'tkazgichlar va animatsiyalar.
+- Zborshik, labo va sotuvchi sahifalari ham yangilangan. Animatsiyalar «harakatni kamaytirish» yoqilgan qurilmalarda o'chadi.
+
+## Eski ma'lumotlar haqida
+Eski zakazlar o'zgarmaydi. Eski mebel/zapchast sklad qoldiqlari endi hisoblanmaydi, faqat matras. Eski yuklarda saqlangan «Matras o'lchami» belgisi ko'rinishda qoladi.

@@ -33,8 +33,8 @@ function card(l) {
       ${(l.jamiTolangan || 0) > 0 && !l.tolandi ? row('Qoldiq', `${money(l.qoldiq)} so'm`, 'mono') : ''}
       ${l.filial?.nomi ? row('Filial', esc(l.filial.nomi)) : ''}
       ${l.labo ? row('Labo', `${esc(l.labo.raqami)} · ${esc(l.labo.haydovchi || '')}<br>${tel(l.labo.telefon)}`) : ''}
-      ${(l.skladItems || []).length ? row('Mahsulotlar', l.skladItems.map((i) => `<div class="zb-item">${esc(i.model)} × ${i.soni}${i.rasmV ? ` <button type="button" class="zb-photo-btn" data-mid="${esc(i.modelId)}" data-v="${Number(i.rasmV)}">📷 Suratni ko'rish</button>` : ''}</div>`).join('')) : ''}
-      ${l.izoh ? row('Izoh', esc(l.izoh)) : ''}
+      ${(l.skladItems || []).length ? row('Mahsulotlar', l.skladItems.map((i) => `<div class="zb-item">${i.yonalish === 'matras' ? '🛏 ' : ''}${esc(i.model)} × ${i.soni}${i.fromModel ? ` <span class="muted">(${esc(i.fromModel)} uchun)</span>` : ''}${i.rasmV ? ` <button type="button" class="zb-photo-btn" data-mid="${esc(i.modelId)}" data-v="${Number(i.rasmV)}">📷 Suratni ko'rish</button>` : ''}</div>`).join('')) : ''}
+      ${l.izoh ? row('📝 Tavsif', esc(l.izoh)) : ''}
     </div>`;
 }
 

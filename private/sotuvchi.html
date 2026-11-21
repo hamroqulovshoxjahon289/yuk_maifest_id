@@ -8,6 +8,8 @@
 <link rel="stylesheet" href="yuk-style.css" />
 <link rel="stylesheet" href="zborshik.css" />
 <link rel="stylesheet" href="sotuvchi.css" />
+<link rel="stylesheet" href="premium.css" />
+<script src="fx.js" defer></script>
 </head>
 <body>
 <header class="zb-top">
@@ -32,43 +34,13 @@
       <button class="icon-btn close-modal" type="button">✕</button>
     </div>
     <form id="orderForm" class="modal-body" autocomplete="off">
-      <div class="section-label">Mahsulot</div>
-      <div class="field-row">
-        <label>Kategoriya
-          <select id="o_kategoriya" required></select>
-        </label>
-        <label>Nomi (bo'sh qoldirsangiz, sklad mahsulotlaridan olinadi)
-          <input type="text" id="o_nomi" maxlength="120" placeholder="masalan: Malika, Diyor..." />
-        </label>
-      </div>
-      <div class="field-row" id="o_matrasRow" style="display:none">
-        <label class="checkbox-label"><input type="checkbox" id="o_matras_bor" /> Matras qo'shilsinmi?</label>
-        <label id="o_matrasTuriWrap" style="display:none">Matras o'lchami
-          <select id="o_matras_turi"></select>
-        </label>
-      </div>
+      <div class="section-label">🛋 Yuk qo'shish</div>
+      <div id="pickerRoot"></div>
 
-      <div class="section-label">🏬 Sklad mahsulotlari</div>
-      <div class="sk-picker">
-        <div class="sk-tabs" id="o_pickTabs"></div>
-        <div class="field-row three">
-          <label id="o_pickCatLabel">Kategoriya
-            <select id="o_pickCat"></select>
-          </label>
-          <label>Model
-            <select id="o_pickModel"></select>
-          </label>
-          <label>Soni
-            <input type="number" id="o_pickQty" min="1" step="1" value="1" />
-          </label>
-        </div>
-        <button type="button" class="ghost-btn small-btn" id="o_pickAdd">＋ Qo'shish</button>
-        <div id="o_picked" class="sk-picked"></div>
-      </div>
-
+      <div class="section-label">📝 Tavsif</div>
       <div class="field-row">
-        <label>Izoh (ixtiyoriy)
-          <input type="text" id="o_izoh" maxlength="300" placeholder="masalan: mijoz maxsus talabi..." />
+        <label>Tavsif (ixtiyoriy) — model emas, boshqa qo'shimcha gap bo'lsa shu yerga yozing
+          <textarea id="o_izoh" rows="2" maxlength="300" placeholder="masalan: mijoz maxsus talabi..."></textarea>
         </label>
       </div>
       <div class="field-row">
@@ -125,6 +97,7 @@
 </div>
 
 <div id="toast" class="toast hidden"></div>
+<script src="picker.js"></script>
 <script src="sotuvchi.js"></script>
 </body>
 </html>

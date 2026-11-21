@@ -19,6 +19,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="yuk-style.css" />
+<link rel="stylesheet" href="premium.css" />
+<script src="fx.js" defer></script>
 </head>
 <body>
 
@@ -70,52 +72,13 @@
     <form id="loadForm" class="modal-body">
       <input type="hidden" id="loadId" />
 
-      <div class="section-label">Mahsulot</div>
-      <div class="field-row three">
-        <label>Kategoriya
-          <select id="f_kategoriya" required></select>
-        </label>
-        <label>Nomi (bo'sh qoldirsangiz, sklad mahsulotlaridan olinadi)
-          <input type="text" id="f_nomi" placeholder="masalan: Malika, Diyor..." />
-        </label>
-      </div>
+      <div class="section-label">🛋 Yuk qo'shish</div>
+      <div id="pickerRoot"></div>
 
-      <div class="field-row" id="matrasRow" style="display:none">
-        <label class="checkbox-label">
-          <input type="checkbox" id="f_matras_bor" />
-          Matras qo'shilsinmi?
-        </label>
-        <label id="matrasTuriWrap" style="display:none">Matras o'lchami
-          <select id="f_matras_turi">
-            <option value="Pol artaped">Pol artaped</option>
-            <option value="Artaped">Artaped</option>
-            <option value="Super artaped">Super artaped</option>
-          </select>
-        </label>
-      </div>
-
-      <div class="section-label">🏬 Sklad mahsulotlari</div>
-      <div class="sk-picker">
-        <div class="sk-tabs" id="skPickTabs"></div>
-        <div class="field-row three">
-          <label>Kategoriya
-            <select id="skPickCat"></select>
-          </label>
-          <label>Model
-            <select id="skPickModel"></select>
-          </label>
-          <label>Soni
-            <input type="number" id="skPickQty" min="1" step="1" value="1" />
-          </label>
-        </div>
-        <button type="button" class="ghost-btn small-btn" id="skPickAdd">＋ Qo'shish</button>
-        <div id="skPickedList" class="sk-picked"></div>
-        <p class="muted-note" id="skPickHint">Yuk "🟢 Yuborildi" bo'lganda tanlangan mahsulotlar skladdan avtomatik ayiriladi.</p>
-      </div>
-
+      <div class="section-label">📝 Tavsif</div>
       <div class="field-row">
-        <label>Izoh (ixtiyoriy)
-          <input type="text" id="f_izoh" placeholder="masalan: mijoz maxsus talabi..." />
+        <label>Tavsif (ixtiyoriy) — model emas, boshqa qo'shimcha gap bo'lsa shu yerga yozing
+          <textarea id="f_izoh" rows="2" maxlength="300" placeholder="masalan: mijoz maxsus talabi, 3-qavatga ko'tarish kerak..."></textarea>
         </label>
       </div>
 
@@ -519,9 +482,32 @@
       <div class="sk-tabs" id="skTabs"></div>
       <div id="skBody"></div>
       <details class="sk-hist" id="skHist">
-        <summary>🕒 Oxirgi harakatlar (kirim / yuborildi)</summary>
+        <summary>🕒 Matras harakatlari (kirim / yuborildi)</summary>
         <div id="skHistBody"></div>
       </details>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MATRAS SOZLASH (modelga matras ketadimi) ============ -->
+<div id="matCfgModal" class="modal-overlay hidden" style="z-index:130">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-head">
+      <h2 id="mcTitle">🛏 Matras</h2>
+      <button class="icon-btn close-modal">✕</button>
+    </div>
+    <div class="modal-body">
+      <label class="pk-switch"><input type="checkbox" id="mcKetadi" /><span class="pk-sw"></span><span>Bu modelga matras ketadi</span></label>
+      <div id="mcWrap" class="pk-hide">
+        <div class="sk-list-title">Qaysi matras(lar) ketishi mumkin?</div>
+        <div id="mcList" class="mc-list"></div>
+        <p class="muted-note">Zakaz qo'shayotganda shulardan biri tanlanadi. Hech biri belgilanmasa, istalgan matras tanlash mumkin bo'ladi.</p>
+      </div>
+      <p class="muted-note">Matras ketmaydigan modelda belgi qo'yilmaydi — zakazga shundayicha qo'shiladi.</p>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="mcCancel">Bekor qilish</button>
+        <button type="button" class="primary-btn" id="mcSave">Saqlash</button>
+      </div>
     </div>
   </div>
 </div>
@@ -641,6 +627,7 @@
 
 <div id="toast" class="toast hidden"></div>
 
+<script src="picker.js"></script>
 <script src="yuk-app.js"></script>
 </body>
 </html>

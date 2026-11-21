@@ -1,0 +1,308 @@
+[
+  {
+    "id": "0014be27-75e0-4617-ab61-54161d8d1a2b",
+    "sana": "2026-11-21",
+    "holat": "qizil",
+    "kategoriya": {
+      "id": "ff95a967-715d-4b38-a97e-feaece0760f8",
+      "nomi": "Adnaspalni"
+    },
+    "nomi": "leyka orex",
+    "skladItems": [
+      {
+        "modelId": "7604da09-9e1b-4848-848b-0914fee786b8",
+        "yonalish": "mebel",
+        "kategoriya": "adnaspalni",
+        "model": "leyka orex",
+        "soni": 1,
+        "matrasId": "612b88a6-3eeb-4e06-acec-7c7c88eab8ac",
+        "matrasNomi": "200x85 artaped",
+        "matrasSoni": 1
+      },
+      {
+        "modelId": "612b88a6-3eeb-4e06-acec-7c7c88eab8ac",
+        "yonalish": "matras",
+        "kategoriya": "",
+        "model": "200x85 artaped",
+        "soni": 1,
+        "fromModelId": "7604da09-9e1b-4848-848b-0914fee786b8",
+        "fromModel": "leyka orex"
+      }
+    ],
+    "skladCut": false,
+    "skladCutItems": [],
+    "matras": {
+      "bor": false,
+      "turi": null
+    },
+    "izoh": "",
+    "manzil": {
+      "hudud": "",
+      "dom": "",
+      "padyez": "",
+      "etaj": ""
+    },
+    "astatka": 0,
+    "tel1": "",
+    "tel2": "",
+    "zborshik": null,
+    "labo": null,
+    "filial": null,
+    "yaratdi": "Shoxjahon Hamroqulov",
+    "tolovlar": [],
+    "tolandi": false,
+    "tartib": 1,
+    "createdAt": "2026-11-21T04:00:36.893Z"
+  },
+  {
+    "id": "a25eccb6-ce10-4ad4-bb1f-7b2da5b7f5a1",
+    "sana": "2026-11-21",
+    "holat": "qizil",
+    "kategoriya": {
+      "id": "8f431700-8a28-41b7-9853-377b8167344d",
+      "nomi": "Shkaf"
+    },
+    "nomi": "jesika orex",
+    "skladItems": [
+      {
+        "modelId": "01b82486-9fed-40a8-99f2-b3efc8d5710c",
+        "yonalish": "mebel",
+        "kategoriya": "shkaf",
+        "model": "jesika orex",
+        "soni": 1
+      }
+    ],
+    "skladCut": false,
+    "skladCutItems": [],
+    "matras": {
+      "bor": false,
+      "turi": null
+    },
+    "izoh": "",
+    "manzil": {
+      "hudud": "",
+      "dom": "",
+      "padyez": "",
+      "etaj": ""
+    },
+    "astatka": 0,
+    "tel1": "",
+    "tel2": "",
+    "zborshik": null,
+    "labo": null,
+    "filial": null,
+    "yaratdi": "Shoxjahon Hamroqulov",
+    "tolovlar": [],
+    "tolandi": false,
+    "tartib": 2,
+    "createdAt": "2026-11-21T04:00:49.728Z"
+  },
+  {
+    "id": "4bd9b8cb-9275-47b1-bb9d-b61c31f24fb0",
+    "sana": "2026-11-21",
+    "holat": "qizil",
+    "kategoriya": {
+      "id": "f3166938-0c62-421c-9679-18a59f4ab21d",
+      "nomi": "Spalni garnitur"
+    },
+    "nomi": "miss",
+    "skladItems": [
+      {
+        "modelId": "a9ab8875-c330-42dc-84ec-f55e52a0c875",
+        "yonalish": "mebel",
+        "kategoriya": "spalni garnitur",
+        "model": "miss",
+        "soni": 1,
+        "matrasId": "612b88a6-3eeb-4e06-acec-7c7c88eab8ac",
+        "matrasNomi": "200x85 artaped",
+        "matrasSoni": 1
+      },
+      {
+        "modelId": "612b88a6-3eeb-4e06-acec-7c7c88eab8ac",
+        "yonalish": "matras",
+        "kategoriya": "",
+        "model": "200x85 artaped",
+        "soni": 1,
+        "fromModelId": "a9ab8875-c330-42dc-84ec-f55e52a0c875",
+        "fromModel": "miss"
+      }
+    ],
+    "skladCut": false,
+    "skladCutItems": [],
+    "matras": {
+      "bor": false,
+      "turi": null
+    },
+    "izoh": "",
+    "manzil": {
+      "hudud": "",
+      "dom": "",
+      "padyez": "",
+      "etaj": ""
+    },
+    "astatka": 0,
+    "tel1": "",
+    "tel2": "",
+    "zborshik": null,
+    "labo": null,
+    "filial": null,
+    "yaratdi": "Shoxjahon Hamroqulov",
+    "tolovlar": [],
+    "tolandi": false,
+    "tartib": 3,
+    "createdAt": "2026-11-21T04:02:00.323Z"
+  },
+  {
+    "id": "bd10bd9d-b794-4ce2-8145-1d6b19ddc2a1",
+    "sana": "2026-11-21",
+    "holat": "qizil",
+    "kategoriya": {
+      "id": "ff95a967-715d-4b38-a97e-feaece0760f8",
+      "nomi": "Adnaspalni"
+    },
+    "nomi": "leyka orex",
+    "skladItems": [
+      {
+        "modelId": "7604da09-9e1b-4848-848b-0914fee786b8",
+        "yonalish": "mebel",
+        "kategoriya": "adnaspalni",
+        "model": "leyka orex",
+        "soni": 1,
+        "matrasId": "612b88a6-3eeb-4e06-acec-7c7c88eab8ac",
+        "matrasNomi": "200x85 artaped",
+        "matrasSoni": 1
+      },
+      {
+        "modelId": "612b88a6-3eeb-4e06-acec-7c7c88eab8ac",
+        "yonalish": "matras",
+        "kategoriya": "",
+        "model": "200x85 artaped",
+        "soni": 1,
+        "fromModelId": "7604da09-9e1b-4848-848b-0914fee786b8",
+        "fromModel": "leyka orex"
+      }
+    ],
+    "skladCut": false,
+    "skladCutItems": [],
+    "matras": {
+      "bor": false,
+      "turi": null
+    },
+    "izoh": "",
+    "manzil": {
+      "hudud": "",
+      "dom": "",
+      "padyez": "",
+      "etaj": ""
+    },
+    "astatka": 0,
+    "tel1": "",
+    "tel2": "",
+    "zborshik": null,
+    "labo": null,
+    "filial": null,
+    "yaratdi": "Shoxjahon Hamroqulov",
+    "tolovlar": [],
+    "tolandi": false,
+    "tartib": 4,
+    "createdAt": "2026-11-21T04:02:12.219Z"
+  },
+  {
+    "id": "e8b34215-ad7e-4e9c-8627-ee59f8cd1c43",
+    "sana": "2026-11-22",
+    "holat": "qizil",
+    "kategoriya": {
+      "id": "9aa12a99-3e98-4de2-b893-4cd2e39e6b18",
+      "nomi": "Matras"
+    },
+    "nomi": "200x85 artaped",
+    "skladItems": [
+      {
+        "modelId": "612b88a6-3eeb-4e06-acec-7c7c88eab8ac",
+        "yonalish": "matras",
+        "kategoriya": "",
+        "model": "200x85 artaped",
+        "soni": 1
+      }
+    ],
+    "skladCut": false,
+    "skladCutItems": [],
+    "matras": {
+      "bor": false,
+      "turi": null
+    },
+    "izoh": "",
+    "manzil": {
+      "hudud": "",
+      "dom": "",
+      "padyez": "",
+      "etaj": ""
+    },
+    "astatka": 0,
+    "tel1": "",
+    "tel2": "",
+    "zborshik": null,
+    "labo": null,
+    "filial": null,
+    "yaratdi": "Shoxjahon Hamroqulov",
+    "tolovlar": [],
+    "tolandi": false,
+    "tartib": 1,
+    "createdAt": "2026-11-21T04:04:31.523Z"
+  },
+  {
+    "id": "215c2b21-0da3-4245-8177-9c1614229601",
+    "sana": "2026-11-22",
+    "holat": "qizil",
+    "kategoriya": {
+      "id": "ff95a967-715d-4b38-a97e-feaece0760f8",
+      "nomi": "Adnaspalni"
+    },
+    "nomi": "leyka orex",
+    "skladItems": [
+      {
+        "modelId": "7604da09-9e1b-4848-848b-0914fee786b8",
+        "yonalish": "mebel",
+        "kategoriya": "adnaspalni",
+        "model": "leyka orex",
+        "soni": 1,
+        "matrasId": "612b88a6-3eeb-4e06-acec-7c7c88eab8ac",
+        "matrasNomi": "200x85 artaped",
+        "matrasSoni": 1
+      },
+      {
+        "modelId": "612b88a6-3eeb-4e06-acec-7c7c88eab8ac",
+        "yonalish": "matras",
+        "kategoriya": "",
+        "model": "200x85 artaped",
+        "soni": 1,
+        "fromModelId": "7604da09-9e1b-4848-848b-0914fee786b8",
+        "fromModel": "leyka orex"
+      }
+    ],
+    "skladCut": false,
+    "skladCutItems": [],
+    "matras": {
+      "bor": false,
+      "turi": null
+    },
+    "izoh": "",
+    "manzil": {
+      "hudud": "",
+      "dom": "",
+      "padyez": "",
+      "etaj": ""
+    },
+    "astatka": 0,
+    "tel1": "",
+    "tel2": "",
+    "zborshik": null,
+    "labo": null,
+    "filial": null,
+    "yaratdi": "Shoxjahon Hamroqulov",
+    "tolovlar": [],
+    "tolandi": false,
+    "tartib": 2,
+    "createdAt": "2026-11-21T04:04:46.883Z"
+  }
+]

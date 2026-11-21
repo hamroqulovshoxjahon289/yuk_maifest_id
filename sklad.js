@@ -1,5 +1,6 @@
-// Sklad: 3 yo'nalish (matras, mebel, zapchast) -> kategoriya -> model (qoldiq soni bilan).
-// Yuk "Yuborildi" bo'lganda tanlangan modellar skladdan avtomatik ayiriladi.
+// Sklad: faqat MATRAS qoldig'i hisoblanadi (kirim, sanoq, "Yuborildi" bo'lganda avtomatik ayirish).
+// Mebel: kategoriya -> model (qoldiq hisoblanmaydi). Har bir modelga "matras ketadimi / qaysi matras" belgilanadi.
+// Zapchast yo'nalishi olib tashlangan (eski ma'lumot faylda qoladi, lekin ko'rinmaydi).
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -63,25 +64,55 @@ function createSklad(store) {
   }
 
   // Yukka kelgan qatorlarni tekshirib, nomlarini nusxa (snapshot) qilib qaytaradi.
+  // Kirish: [{ modelId, soni, matrasId?, matrasSoni? }]. Mebel modeliga matras biriktirilsa, ro'yxatga
+  // alohida "matras" qatori ham qo'shiladi (sklad hisobi faqat matras qatorlari bo'yicha yuradi).
   function normalizeItems(p, input) {
     const s = read(p);
-    const merged = new Map();
+    const out = [];
     (Array.isArray(input) ? input : []).forEach((it) => {
       const m = s.models.find((x) => x.id === (it && it.modelId));
-      if (!m) throw fail(400, 'Sklad modeli topilmadi (o\'chirilgan bo\'lishi mumkin). Qaytadan tanlang.');
+      if (!m) throw fail(400, 'Model topilmadi (o\'chirilgan bo\'lishi mumkin). Qaytadan tanlang.');
       const soni = toQty(it.soni);
       if (!(soni > 0) || soni > MAX_QTY) throw fail(400, `"${m.nomi}" sonini to'g'ri kiriting (1 dan boshlab)`);
-      merged.set(m.id, { m, soni: (merged.has(m.id) ? merged.get(m.id).soni : 0) + soni });
-    });
-    return [...merged.values()].map(({ m, soni }) => {
       const c = s.categories.find((x) => x.id === m.categoryId);
-      return { modelId: m.id, yonalish: c ? c.yonalish : 'mebel', kategoriya: c ? c.nomi : '', model: m.nomi, soni };
+      const yon = c ? c.yonalish : 'mebel';
+      if (yon === 'matras') {
+        out.push({ modelId: m.id, yonalish: 'matras', kategoriya: '', model: m.nomi, soni });
+        return;
+      }
+      const item = { modelId: m.id, yonalish: yon, kategoriya: c ? c.nomi : '', model: m.nomi, soni };
+      if (it.matrasId) {
+        const mm = s.models.find((x) => x.id === it.matrasId);
+        const mc = mm && s.categories.find((x) => x.id === mm.categoryId);
+        if (!mm || !mc || mc.yonalish !== 'matras') throw fail(400, 'Matras modeli topilmadi (o\'chirilgan bo\'lishi mumkin). Qaytadan tanlang.');
+        const ms = it.matrasSoni === undefined || it.matrasSoni === '' || it.matrasSoni === null ? soni : toQty(it.matrasSoni);
+        if (!(ms > 0) || ms > MAX_QTY) throw fail(400, `"${mm.nomi}" matras sonini to'g'ri kiriting (1 dan boshlab)`);
+        item.matrasId = mm.id; item.matrasNomi = mm.nomi; item.matrasSoni = ms;
+        out.push(item);
+        out.push({ modelId: mm.id, yonalish: 'matras', kategoriya: '', model: mm.nomi, soni: ms, fromModelId: m.id, fromModel: m.nomi });
+      } else {
+        out.push(item);
+      }
     });
+    return out;
+  }
+
+  // Saqlangan (yassi) ro'yxatni formaga/serverga qaytariladigan kirish ko'rinishiga aylantiradi
+  function toInput(items) {
+    const out = [];
+    (items || []).forEach((i) => {
+      if (i.yonalish === 'matras' && i.fromModelId) return; // mebel qatoriga biriktirilgan — alohida chiqmaydi
+      const r = { modelId: i.modelId, soni: i.soni };
+      if (i.matrasId) { r.matrasId = i.matrasId; r.matrasSoni = i.matrasSoni; }
+      out.push(r);
+    });
+    return out;
   }
 
   // Nom yozilmagan bo'lsa, tanlangan modellardan avtomatik nom
   function autoNomi(items) {
-    const t = (items || []).map((i) => i.model).join(', ');
+    const base = (items || []).filter((i) => !(i.yonalish === 'matras' && i.fromModelId));
+    const t = base.map((i) => i.model).join(', ');
     return t.length > 80 ? `${t.slice(0, 77)}...` : t;
   }
 
@@ -117,7 +148,8 @@ function createSklad(store) {
   function syncLoadStock(p, load, ctx) {
     const s = read(p);
     const log = logger(s, load, ctx);
-    const items = load.skladItems || [];
+    // Faqat matras qatorlari sklad hisobida yuradi (mebel/model hisoblanmaydi)
+    const items = (load.skladItems || []).filter((i) => i.yonalish === 'matras');
     const shouldCut = load.holat === 'yashil' && items.length > 0;
     let changed = false;
 
@@ -126,10 +158,15 @@ function createSklad(store) {
     }
     if (shouldCut && !load.skladCut) {
       const kamlar = [];
+      const jami = new Map(); // bir xil matras bir necha qatorda bo'lsa, jami son bo'yicha tekshiramiz
       items.forEach((it) => {
+        const r = jami.get(it.modelId) || { it, soni: 0 };
+        r.soni += it.soni; jami.set(it.modelId, r);
+      });
+      jami.forEach(({ it, soni }) => {
         const m = s.models.find((x) => x.id === it.modelId);
         const bor = m ? (Number(m.qoldiq) || 0) : 0;
-        if (bor < it.soni) kamlar.push({ yonalish: it.yonalish, kategoriya: it.kategoriya, model: it.model, bor, kerak: it.soni });
+        if (bor < soni) kamlar.push({ yonalish: it.yonalish, kategoriya: it.kategoriya, model: it.model, bor, kerak: soni });
       });
       if (kamlar.length && !ctx.force) {
         const txt = kamlar.map((k) => `${k.model} (bor ${k.bor}, kerak ${k.kerak})`).join('; ');
@@ -164,7 +201,7 @@ function createSklad(store) {
     const dayOf = (sana) => {
       if (!days.has(sana)) {
         const y = {};
-        YONALISHLAR.forEach((k) => { y[k] = { jami: 0, ketdi: 0, qoldi: 0, map: new Map() }; });
+        y.matras = { jami: 0, ketdi: 0, qoldi: 0, map: new Map() };
         days.set(sana, y);
       }
       return days.get(sana);
@@ -172,8 +209,8 @@ function createSklad(store) {
     loads.forEach((l) => {
       if (!l.sana || l.sana < from || l.sana > to) return;
       const sent = l.holat === 'yashil';
-      (l.skladItems || []).forEach((it) => {
-        const y = dayOf(l.sana)[YONALISHLAR.includes(it.yonalish) ? it.yonalish : 'mebel'];
+      (l.skladItems || []).filter((it) => it.yonalish === 'matras').forEach((it) => {
+        const y = dayOf(l.sana).matras;
         const key = it.modelId;
         if (!y.map.has(key)) y.map.set(key, { modelId: it.modelId, kategoriya: it.kategoriya, model: it.model, jami: 0, ketdi: 0, qoldi: 0, skladda: stock.has(key) ? stock.get(key) : null });
         const row = y.map.get(key);
@@ -184,7 +221,7 @@ function createSklad(store) {
     const out = [];
     for (const [sana, y] of [...days.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
       const yonalishlar = {};
-      YONALISHLAR.forEach((k) => {
+      ['matras'].forEach((k) => {
         yonalishlar[k] = {
           jami: y[k].jami, ketdi: y[k].ketdi, qoldi: y[k].qoldi,
           modellar: [...y[k].map.values()].sort((a, b) => (a.kategoriya || '').localeCompare(b.kategoriya || '') || a.model.localeCompare(b.model)),
@@ -204,13 +241,39 @@ function createSklad(store) {
     return s.models.filter((m) => m.categoryId === c.id);
   }
 
+  // Ko'rinadigan sklad: zapchast olib tashlangan (eski ma'lumot faylda qoladi, lekin ko'rsatilmaydi)
+  const VISIBLE = ['matras', 'mebel'];
+  function publicSklad(s) {
+    const cats = s.categories.filter((c) => VISIBLE.includes(c.yonalish));
+    const ids = new Set(cats.map((c) => c.id));
+    const models = s.models.filter((m) => ids.has(m.categoryId)).map((m) => {
+      const c = cats.find((x) => x.id === m.categoryId);
+      const out = { ...m };
+      if (c.yonalish === 'matras') { delete out.matrasKetadi; delete out.matrasIds; return out; }
+      const matIds = new Set(s.models.filter((x) => (cats.find((k) => k.id === x.categoryId) || {}).yonalish === 'matras').map((x) => x.id));
+      out.matrasKetadi = !!m.matrasKetadi;
+      out.matrasIds = (Array.isArray(m.matrasIds) ? m.matrasIds : []).filter((id) => matIds.has(id)); // o'chirilgan matraslar tushib qoladi
+      return out;
+    });
+    return { yonalishlar: VISIBLE.map((k) => ({ id: k, nomi: YONALISH_NOMI[k] })), categories: cats, models };
+  }
+  // Matras ketadigan model sozlamasi: { ketadi: bool, ids: [matras model id] }
+  function cleanMatrasCfg(s, body) {
+    const ketadi = !!(body && (body.ketadi ?? body.matrasKetadi));
+    const raw = body && (body.ids ?? body.matrasIds);
+    const matIds = new Set(s.models.filter((m) => (s.categories.find((c) => c.id === m.categoryId) || {}).yonalish === 'matras').map((m) => m.id));
+    const ids = ketadi ? [...new Set((Array.isArray(raw) ? raw : []).filter((id) => matIds.has(id)))] : [];
+    return { ketadi, ids };
+  }
+  const isMatrasModel = (s, m) => ((s.categories.find((c) => c.id === m.categoryId) || {}).yonalish) === 'matras';
+
   function mount(app, d) {
     const { requireAuth, staffOnly, can, deleteCode, readLoads, todayStr, express } = d;
     const manage = can('team'); // kategoriya/model/kirim: egasi yoki "Jamoani boshqarish" ruxsati bor xodim
 
     app.get('/api/sklad', requireAuth, staffOnly, (req, res) => {
       const s = read(req.paths);
-      res.json({ yonalishlar: YONALISHLAR.map((k) => ({ id: k, nomi: YONALISH_NOMI[k] })), categories: s.categories, models: s.models });
+      res.json(publicSklad(s));
     });
 
     app.get('/api/sklad/harakat', requireAuth, staffOnly, (req, res) => {
@@ -222,8 +285,7 @@ function createSklad(store) {
     app.post('/api/sklad/categories', requireAuth, staffOnly, manage, (req, res) => {
       const yonalish = String(req.body.yonalish || '');
       const nomi = cleanName(req.body.nomi);
-      if (!YONALISHLAR.includes(yonalish)) return res.status(400).json({ error: "Yo'nalishni tanlang" });
-      if (yonalish === 'matras') return res.status(400).json({ error: "Matras yo'nalishida kategoriya kerak emas — to'g'ridan-to'g'ri model qo'shing" });
+      if (yonalish !== 'mebel') return res.status(400).json({ error: "Kategoriya faqat mebel uchun qo'shiladi (matrasda kategoriya yo'q, zapchast olib tashlangan)" });
       if (!nomi) return res.status(400).json({ error: 'Kategoriya nomini kiriting' });
       const s = read(req.paths);
       if (s.categories.some((c) => c.yonalish === yonalish && c.nomi.toLowerCase() === nomi.toLowerCase())) {
@@ -276,12 +338,17 @@ function createSklad(store) {
       if (sameGroup(s, c).some((m) => m.nomi.toLowerCase() === nomi.toLowerCase())) {
         return res.status(400).json({ error: c.yonalish === 'matras' ? 'Bunday matras modeli allaqachon bor' : 'Bu model shu kategoriyada allaqachon bor' });
       }
+      if (c.yonalish === 'zapchast') return res.status(400).json({ error: "Zapchast yo'nalishi olib tashlangan" });
       let qoldiq = 0;
-      if (req.body.qoldiq !== undefined && req.body.qoldiq !== '') {
+      if (c.yonalish === 'matras' && req.body.qoldiq !== undefined && req.body.qoldiq !== '') {
         qoldiq = toQty(req.body.qoldiq);
         if (!(qoldiq >= 0) || qoldiq > MAX_QTY) return res.status(400).json({ error: "Boshlang'ich qoldiq noto'g'ri" });
       }
       const m = { id: crypto.randomUUID(), categoryId: c.id, nomi, qoldiq, createdAt: new Date().toISOString() };
+      if (c.yonalish !== 'matras') {
+        const cfg = cleanMatrasCfg(s, req.body);
+        m.matrasKetadi = cfg.ketadi; m.matrasIds = cfg.ids;
+      }
       s.models.push(m);
       if (qoldiq > 0) {
         s.harakat.push({ id: crypto.randomUUID(), sana: todayStr(), vaqt: new Date().toISOString(), modelId: m.id, yonalish: c.yonalish, kategoriya: c.nomi, model: m.nomi, delta: qoldiq, tur: 'kirim', loadId: null, loadNomi: '', kim: req.user.name });
@@ -310,9 +377,23 @@ function createSklad(store) {
       const i = s.models.findIndex((x) => x.id === req.params.id);
       if (i === -1) return res.status(404).json({ error: 'Model topilmadi' });
       removeImage(req.paths, s.models[i]);
+      const gone = s.models[i].id;
       s.models.splice(i, 1);
+      s.models.forEach((x) => { if (Array.isArray(x.matrasIds)) x.matrasIds = x.matrasIds.filter((id) => id !== gone); });
       write(req.paths, s);
       res.json({ ok: true });
+    });
+
+    // Modelga matras ketishi: ketadimi va qaysi matraslar (bo'sh ro'yxat = istalgan matras tanlanadi)
+    app.put('/api/sklad/models/:id/matras', requireAuth, staffOnly, manage, (req, res) => {
+      const s = read(req.paths);
+      const m = s.models.find((x) => x.id === req.params.id);
+      if (!m) return res.status(404).json({ error: 'Model topilmadi' });
+      if (isMatrasModel(s, m)) return res.status(400).json({ error: "Matrasning o'ziga matras biriktirilmaydi" });
+      const cfg = cleanMatrasCfg(s, req.body);
+      m.matrasKetadi = cfg.ketadi; m.matrasIds = cfg.ids;
+      write(req.paths, s);
+      res.json(m);
     });
 
     // Kirim: skladga mahsulot keldi (qoldiq oshadi)
@@ -322,6 +403,7 @@ function createSklad(store) {
       const s = read(req.paths);
       const m = s.models.find((x) => x.id === req.params.id);
       if (!m) return res.status(404).json({ error: 'Model topilmadi' });
+      if (!isMatrasModel(s, m)) return res.status(400).json({ error: "Sklad hisobi faqat matras uchun yuradi" });
       const c = s.categories.find((x) => x.id === m.categoryId) || {};
       m.qoldiq = (Number(m.qoldiq) || 0) + soni;
       s.harakat.push({ id: crypto.randomUUID(), sana: todayStr(), vaqt: new Date().toISOString(), modelId: m.id, yonalish: c.yonalish || 'mebel', kategoriya: c.nomi || '', model: m.nomi, delta: soni, tur: 'kirim', loadId: null, loadNomi: '', kim: req.user.name });
@@ -336,6 +418,7 @@ function createSklad(store) {
       const s = read(req.paths);
       const m = s.models.find((x) => x.id === req.params.id);
       if (!m) return res.status(404).json({ error: 'Model topilmadi' });
+      if (!isMatrasModel(s, m)) return res.status(400).json({ error: "Sklad hisobi faqat matras uchun yuradi" });
       const c = s.categories.find((x) => x.id === m.categoryId) || {};
       const delta = yangi - (Number(m.qoldiq) || 0);
       m.qoldiq = yangi;
@@ -405,7 +488,7 @@ function createSklad(store) {
     });
   }
 
-  return { read, normalizeItems, autoNomi, syncLoadStock, releaseLoadStock, buildReport, withPhotoFlags, mount };
+  return { read, publicSklad, toInput, normalizeItems, autoNomi, syncLoadStock, releaseLoadStock, buildReport, withPhotoFlags, mount };
 }
 
 module.exports = { createSklad, YONALISHLAR };

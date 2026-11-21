@@ -420,6 +420,24 @@ function readTaxonomy(p) {
   return tax;
 }
 
+// Yangi oqimda kategoriya sklad kategoriyasidan olinadi: shu nomli jadval kategoriyasi bo'lmasa, yaratiladi
+function ensureTaxCategory(p, name) {
+  const tax = readTaxonomy(p);
+  let c = tax.find((x) => x.name.toLowerCase() === String(name).toLowerCase());
+  if (!c) { c = { id: crypto.randomUUID(), name: String(name), colors: [] }; tax.push(c); store.writeJson(p.taxonomy, tax); }
+  return c;
+}
+function deriveCategory(p, items, kategoriyaId, fallback) {
+  if (kategoriyaId) { const c = readTaxonomy(p).find((x) => x.id === kategoriyaId); if (c) return c; }
+  const mebel = (items || []).filter((i) => i.yonalish !== 'matras' && i.kategoriya);
+  // Zakazda adnaspalni modeli bo'lsa, zakaz "Adnaspalni" (o'ng ustun) hisoblanadi; aks holda birinchi model kategoriyasi
+  const adna = mebel.find((i) => String(i.kategoriya).trim().toLowerCase() === 'adnaspalni');
+  const first = adna || mebel[0];
+  if (first) return ensureTaxCategory(p, first.kategoriya);
+  if ((items || []).some((i) => i.yonalish === 'matras')) return ensureTaxCategory(p, 'Matras');
+  return fallback || ensureTaxCategory(p, 'Boshqa');
+}
+
 function totalPaid(l) {
   return (l.tolovlar || []).reduce((sum, t) => sum + (Number(t.summa) || 0), 0);
 }
@@ -872,16 +890,15 @@ function snapFilial(p, id) {
 function addLoadCore(req, b, extra = {}) {
   const { sana, holat, kategoriyaId, nomi, matras, izoh, manzil, astatka, tel1, tel2, zborshikId, laboId, filialId, skladItems, force } = b;
   const items = sklad.normalizeItems(req.paths, skladItems);
-  const nomiFinal = String(nomi || '').trim() || sklad.autoNomi(items);
-  if (!sana || !kategoriyaId || !nomiFinal) {
-    throw httpFail(400, 'Sana, kategoriya va nomi (yoki sklad mahsuloti) majburiy');
+  const nomiFinal = String(nomi || '').trim() || sklad.autoNomi(items) || String(izoh || '').trim().slice(0, 60);
+  if (!sana || !nomiFinal) {
+    throw httpFail(400, "Sana va yuk majburiy: kategoriya → model tanlang yoki tavsif yozing");
   }
   const loads = readLoads(req.paths);
   if (loads.filter((l) => l.sana === sana).length >= MAX_PER_DAY) {
     throw httpFail(400, `Bu kunga zakazlar to'ldi (kuniga maksimum ${MAX_PER_DAY} ta)`);
   }
-  const cat = readTaxonomy(req.paths).find((c) => c.id === kategoriyaId);
-  if (!cat) throw httpFail(400, 'Kategoriya topilmadi');
+  const cat = deriveCategory(req.paths, items, kategoriyaId);
 
   const newLoad = {
     id: crypto.randomUUID(),
@@ -952,13 +969,17 @@ app.put('/api/loads/:id', requireAuth, staffOnly, can('edit'), actionCode, (req,
     const cat = readTaxonomy(req.paths).find((c) => c.id === (kategoriyaId || loads[idx].kategoriya?.id));
     if (cat) kategoriya = { id: cat.id, nomi: cat.name };
     matrasFinal = resolveMatras(kategoriya.nomi, matras !== undefined ? matras : loads[idx].matras);
+  } else if (skladItems !== undefined && itemsFinal.some((i) => i.yonalish !== 'matras' && i.kategoriya)) {
+    // Yangi oqim: kategoriya tanlangan modelning sklad kategoriyasidan olinadi
+    const cat = deriveCategory(req.paths, itemsFinal, null, null);
+    if (cat) kategoriya = { id: cat.id, nomi: cat.name };
   }
   loads[idx] = {
     ...loads[idx],
     sana: sana ?? loads[idx].sana,
     holat: HOLATLAR.includes(holat) ? holat : loads[idx].holat,
     kategoriya,
-    nomi: nomi !== undefined ? (String(nomi).trim() || sklad.autoNomi(itemsFinal) || loads[idx].nomi) : loads[idx].nomi,
+    nomi: nomi !== undefined ? (String(nomi).trim() || sklad.autoNomi(itemsFinal) || String(izoh || '').trim().slice(0, 60) || loads[idx].nomi) : loads[idx].nomi,
     skladItems: itemsFinal,
     matras: matrasFinal,
     izoh: izoh !== undefined ? String(izoh).trim() : loads[idx].izoh,
@@ -1175,9 +1196,8 @@ function buildPendingDraft(req, b) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(sana)) throw httpFail(400, "Jo'natish sanasini tanlang");
   const items = sklad.normalizeItems(req.paths, b.skladItems);
   const nomi = cut(b.nomi, 120);
-  if (!nomi && !items.length) throw httpFail(400, 'Nomini yozing yoki sklad mahsulotini tanlang');
-  const cat = readTaxonomy(req.paths).find((c) => c.id === b.kategoriyaId);
-  if (!cat) throw httpFail(400, 'Kategoriyani tanlang');
+  if (!nomi && !items.length && !cut(b.izoh, 300)) throw httpFail(400, 'Kategoriya → model tanlang yoki tavsif yozing');
+  const cat = deriveCategory(req.paths, items, b.kategoriyaId);
   const astatka = Number(b.astatka) || 0;
   if (astatka < 0 || astatka > 1e12) throw httpFail(400, "Astatka summasi noto'g'ri");
   const zalog = makeZalog(b.zalogSumma, b.zalogIzoh);
@@ -1203,7 +1223,7 @@ function pendingToBody(p) {
   return {
     sana: p.sana, kategoriyaId: p.kategoriya && p.kategoriya.id, nomi: p.nomi, matras: p.matras, izoh: p.izoh,
     manzil: p.manzil, astatka: p.astatka, tel1: p.tel1, tel2: p.tel2, filialId: p.filial && p.filial.id,
-    skladItems: (p.skladItems || []).map((i) => ({ modelId: i.modelId, soni: i.soni })),
+    skladItems: sklad.toInput(p.skladItems),
     zalogSumma: p.zalogSumma, zalogIzoh: p.zalogIzoh,
   };
 }
@@ -1223,11 +1243,14 @@ app.get('/api/sotuvchi/meta', requireAuth, sellerOnly, (req, res) => {
     matrasCategories: MATRAS_CATEGORIES,
     matrasTypes: MATRAS_TYPES,
     filiallar: readFiliallar(req.paths),
-    sklad: {
-      yonalishlar: [{ id: 'matras', nomi: 'Matras' }, { id: 'mebel', nomi: 'Mebel' }, { id: 'zapchast', nomi: 'Zapchast' }],
-      categories: s.categories.map((c) => ({ id: c.id, yonalish: c.yonalish, nomi: c.nomi, yashirin: !!c.yashirin })),
-      models: s.models.map((m) => ({ id: m.id, categoryId: m.categoryId, nomi: m.nomi, qoldiq: Number(m.qoldiq) || 0 })),
-    },
+    sklad: (() => {
+      const v = sklad.publicSklad(s);
+      return {
+        yonalishlar: v.yonalishlar,
+        categories: v.categories.map((c) => ({ id: c.id, yonalish: c.yonalish, nomi: c.nomi, yashirin: !!c.yashirin })),
+        models: v.models.map((m) => ({ id: m.id, categoryId: m.categoryId, nomi: m.nomi, qoldiq: Number(m.qoldiq) || 0, matrasKetadi: !!m.matrasKetadi, matrasIds: m.matrasIds || [] })),
+      };
+    })(),
     perms: effectivePerms(req.user),
   });
 });
