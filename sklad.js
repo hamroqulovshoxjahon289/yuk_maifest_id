@@ -112,8 +112,8 @@ function createSklad(store) {
   // Nom yozilmagan bo'lsa, tanlangan modellardan avtomatik nom
   function autoNomi(items) {
     const base = (items || []).filter((i) => !(i.yonalish === 'matras' && i.fromModelId));
-    const t = base.map((i) => i.model).join(', ');
-    return t.length > 80 ? `${t.slice(0, 77)}...` : t;
+    const t = base.map((i) => `${i.model} ${i.soni} ta`).join(' + ');
+    return t.length > 160 ? `${t.slice(0, 157)}...` : t;
   }
 
   function sameItems(a, b) {

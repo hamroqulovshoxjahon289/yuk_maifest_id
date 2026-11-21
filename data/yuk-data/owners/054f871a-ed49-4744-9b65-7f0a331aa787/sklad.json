@@ -1,0 +1,50 @@
+{
+  "categories": [
+    {
+      "id": "bb50db98-2ed7-4e5e-ba78-64c1b35e86a3",
+      "yonalish": "mebel",
+      "nomi": "adnaspalni"
+    },
+    {
+      "id": "d3dfc566-a5d4-437e-ad7c-e03bac9ff181",
+      "yonalish": "mebel",
+      "nomi": "shkaf"
+    },
+    {
+      "id": "0d761ac7-86a4-4687-ad85-c13d7894812b",
+      "yonalish": "matras",
+      "nomi": "Matras",
+      "yashirin": true
+    }
+  ],
+  "models": [
+    {
+      "id": "f602643f-9ab4-4a55-a76d-304c9907d5d2",
+      "categoryId": "0d761ac7-86a4-4687-ad85-c13d7894812b",
+      "nomi": "210x20",
+      "qoldiq": 0,
+      "createdAt": "2026-11-21T07:57:53.927Z"
+    },
+    {
+      "id": "b7ee5940-4eee-411d-9630-a48cbb6f7eae",
+      "categoryId": "bb50db98-2ed7-4e5e-ba78-64c1b35e86a3",
+      "nomi": "leyla orex",
+      "qoldiq": 0,
+      "createdAt": "2026-11-21T07:58:00.942Z",
+      "matrasKetadi": true,
+      "matrasIds": [
+        "f602643f-9ab4-4a55-a76d-304c9907d5d2"
+      ]
+    },
+    {
+      "id": "e5526f66-5c1b-44e1-a549-1f1d4bf15ef5",
+      "categoryId": "d3dfc566-a5d4-437e-ad7c-e03bac9ff181",
+      "nomi": "jesika orex",
+      "qoldiq": 0,
+      "createdAt": "2026-11-21T07:58:11.731Z",
+      "matrasKetadi": false,
+      "matrasIds": []
+    }
+  ],
+  "harakat": []
+}

@@ -54,7 +54,7 @@ function orderCard(o, kind) {
   const row = (k, v, cls = '') => `<div class="zb-row"><span class="k">${k}</span><span class="v ${cls}">${v}</span></div>`;
   const when = kind === 'acc' ? `Yuborilgan: ${fmtTime(o.createdAt)}` : fmtTime(o.yangilandi || o.createdAt);
   return `<div class="zb-card s-card ${kind}" data-id="${esc(o.id)}">
-    <div class="zb-title">${esc(o.nomi || '—')}</div>
+    <div class="zb-title">${esc(loadTitle(o) || '—')}</div>
     <div class="zb-cat">${esc(o.kategoriya?.nomi || '')} · 🕒 ${esc(when)}</div>
     ${kind === 'acc' ? row('Holat', HOLAT_LABEL[o.holat] || esc(o.holat)) : ''}
     ${row("Jo'natish sanasi", esc(dayLabel(o.sana)))}

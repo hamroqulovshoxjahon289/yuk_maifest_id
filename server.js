@@ -430,9 +430,8 @@ function ensureTaxCategory(p, name) {
 function deriveCategory(p, items, kategoriyaId, fallback) {
   if (kategoriyaId) { const c = readTaxonomy(p).find((x) => x.id === kategoriyaId); if (c) return c; }
   const mebel = (items || []).filter((i) => i.yonalish !== 'matras' && i.kategoriya);
-  // Zakazda adnaspalni modeli bo'lsa, zakaz "Adnaspalni" (o'ng ustun) hisoblanadi; aks holda birinchi model kategoriyasi
-  const adna = mebel.find((i) => String(i.kategoriya).trim().toLowerCase() === 'adnaspalni');
-  const first = adna || mebel[0];
+  // Zakaz qaysi ustunga tushishi BIRINCHI tanlangan model kategoriyasiga qarab hal qilinadi
+  const first = mebel[0];
   if (first) return ensureTaxCategory(p, first.kategoriya);
   if ((items || []).some((i) => i.yonalish === 'matras')) return ensureTaxCategory(p, 'Matras');
   return fallback || ensureTaxCategory(p, 'Boshqa');

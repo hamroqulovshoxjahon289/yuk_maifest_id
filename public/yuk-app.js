@@ -290,7 +290,7 @@ document.getElementById('searchInput').addEventListener('input', (e) => {
 function matchesSearch(l) {
   if (!searchTerm) return true;
   const hay = [
-    l.nomi, l.manzil?.hudud, l.manzil?.dom, l.tel1, l.tel2,
+    loadTitle(l), l.manzil?.hudud, l.manzil?.dom, l.tel1, l.tel2,
     l.zborshik?.ism, l.zborshik?.telefon, l.labo?.raqami, l.labo?.haydovchi, l.labo?.telefon,
     l.kategoriya?.nomi, ...(l.skladItems || []).flatMap((i) => [i.model, i.kategoriya]),
   ].filter(Boolean).join(' ').toLowerCase();
@@ -318,8 +318,7 @@ function renderBoard() {
 
     const dayLoads = loads.filter((l) => l.sana === iso).sort((a, b) => (a.tartib || 0) - (b.tartib || 0)); // tartib raqami bo'yicha; limit uchun — filtrlanmagan
     const displayLoads = dayLoads.filter(matchesSearch);
-    const isAdna = (l) => (l.kategoriya?.nomi || '').trim().toLowerCase() === ADNASPALNI_NAME
-      || (l.skladItems || []).some((i) => i.yonalish !== 'matras' && String(i.kategoriya || '').trim().toLowerCase() === ADNASPALNI_NAME);
+    const isAdna = (l) => (l.kategoriya?.nomi || '').trim().toLowerCase() === ADNASPALNI_NAME; // birinchi model kategoriyasi
     const otherLoads = displayLoads.filter((l) => !isAdna(l));
     const adnaLoads = displayLoads.filter(isAdna);
 
@@ -372,7 +371,7 @@ function renderCard(l) {
   const addrBits = [l.manzil?.hudud, l.manzil?.dom ? `dom ${l.manzil.dom}` : '', l.manzil?.padyez ? `${l.manzil.padyez}-padyez` : '', l.manzil?.etaj ? `${l.manzil.etaj}-etaj` : '']
     .filter(Boolean).join(', ');
 
-  const title = l.nomi;
+  const title = loadTitle(l);
   const meta = [];
   if (l.matras?.bor) meta.push(`🛏 ${l.matras.turi}`);
   (l.skladItems || []).slice(0, 3).forEach((i) => meta.push(`${YON_ICON[i.yonalish] || '📦'} ${i.model} ×${i.soni}`));
@@ -564,7 +563,7 @@ const quickLaboSelect = document.getElementById('quickLabo');
 
 function openViewModal(l) {
   viewingLoad = l;
-  const title = l.nomi;
+  const title = loadTitle(l);
   document.getElementById('viewTitle').textContent = title || 'Yuk';
   const addrLine = [l.manzil?.hudud].filter(Boolean).join(', ') || '—';
   const domLine = [
@@ -590,7 +589,7 @@ function openViewModal(l) {
     <div class="view-row"><span class="k">Qoldiq</span><span class="v mono" style="color:${qoldiq > 0 ? '#f87171' : '#4ade80'};">${fmtMoney(qoldiq)} so'm</span></div>
     <div class="view-row"><span class="k">To'lovlar tarixi</span><span class="v">${tolovTarixi}</span></div>
     <div class="view-row"><span class="k">Kategoriya</span><span class="v">${escapeHtml(l.kategoriya?.nomi || '—')}</span></div>
-    <div class="view-row"><span class="k">Nomi</span><span class="v">${escapeHtml(l.nomi || '—')}</span></div>
+    <div class="view-row"><span class="k">Nomi</span><span class="v">${escapeHtml(loadTitle(l) || '—')}</span></div>
     ${l.matras?.bor ? `<div class="view-row"><span class="k">Matras</span><span class="v">${escapeHtml(l.matras.turi)}</span></div>` : ''}
     ${(l.skladItems || []).length ? `<div class="view-row"><span class="k">Yuklar</span><span class="v">${(l.skladItems || []).map((i) => (i.yonalish === 'matras'
       ? `<span class="pk-line mat">🛏 <b>${escapeHtml(i.model)}</b> × ${i.soni}${i.fromModel ? ` <span class="sk-muted">(${escapeHtml(i.fromModel)} uchun)</span>` : ''}</span>`
@@ -711,7 +710,7 @@ document.getElementById('printLoadBtn').onclick = () => {
     l.manzil?.padyez ? `${l.manzil.padyez}-padyez` : '',
     l.manzil?.etaj ? `${l.manzil.etaj}-etaj` : '',
   ].filter(Boolean).join(' · ') || '—';
-  const title = l.nomi;
+  const title = loadTitle(l);
 
   document.getElementById('printArea').innerHTML = `
     <h1>${escapeHtml(title || 'Yuk')}</h1>
@@ -885,7 +884,7 @@ function computePeopleReport(getKey, getMeta, dateList) {
     if (!map.has(key)) map.set(key, { meta: getMeta(l), perDayNames: {}, jami: 0 });
     const rec = map.get(key);
     if (!rec.perDayNames[l.sana]) rec.perDayNames[l.sana] = [];
-    rec.perDayNames[l.sana].push(l.nomi || 'nomsiz');
+    rec.perDayNames[l.sana].push(loadTitle(l) || 'nomsiz');
     rec.jami += 1;
   });
   return { rangeDates, rows: Array.from(map.values()) };
@@ -1024,7 +1023,7 @@ function printPersonMonthlyReport(type, person, personLabel) {
     .map((l) => `
       <tr>
         <td>${l.sana}</td>
-        <td>${escapeHtml(l.nomi || '—')}</td>
+        <td>${escapeHtml(loadTitle(l) || '—')}</td>
         <td>${escapeHtml(l.filial?.nomi || '—')}</td>
         <td>${escapeHtml(l.manzil?.hudud || '—')}</td>
         <td>${HOLAT_LABEL[l.holat] || l.holat}</td>
@@ -1723,7 +1722,7 @@ let moveTarget = null;
 function openMoveModal(l) {
   moveTarget = l;
   const n = loads.filter((x) => x.sana === l.sana).length;
-  const title = l.nomi || 'Zakaz';
+  const title = loadTitle(l) || 'Zakaz';
   document.getElementById('moveInfo').textContent = `${title}. Hozirgi raqami: ${l.tartib} (kunda jami ${n} ta zakaz).`;
   const inp = document.getElementById('moveInput');
   inp.min = 1; inp.max = n; inp.value = l.tartib;
