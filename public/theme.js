@@ -15,11 +15,21 @@
     { id: 'limon', nomi: 'Limon', izoh: "Qorong'u · sariq", e: '🍋', c: ['#facc15', '#fb923c', '#a3e635'], bg: '#1a1808' },
     { id: 'firuza', nomi: 'Firuza', izoh: "Qorong'u · firuza", e: '💎', c: ['#2dd4bf', '#38bdf8', '#a78bfa'], bg: '#082422' },
     { id: 'grafit', nomi: 'Grafit', izoh: "Qorong'u · kumush", e: '⚫', c: ['#f4f4f5', '#a1a1aa', '#71717a'], bg: '#141416' },
+    { id: 'kofe', nomi: 'Kofe', izoh: "Qorong'u · qahva", e: '☕', c: ['#d4a373', '#e9c99b', '#a47148'], bg: '#0f0a07' },
+    { id: 'oltin', nomi: 'Oltin', izoh: "Qorong'u · tilla", e: '🏆', c: ['#e6b422', '#f5d77a', '#b8860b'], bg: '#0b0905' },
+    { id: 'zaytun', nomi: 'Zaytun', izoh: "Qorong'u · zaytun", e: '🫒', c: ['#a8b84a', '#d4e08a', '#7c8c2e'], bg: '#0b0d06' },
+    { id: 'amoled', nomi: 'Amoled', izoh: "Sof qora · limon-yashil", e: '🖤', c: ['#b6f23c', '#e4ff8a', '#22d3ee'], bg: '#000000' },
+    { id: 'marjon', nomi: 'Marjon', izoh: "Qorong'u · marjon", e: '🪸', c: ['#ff8a7a', '#ffc2a8', '#5eead4'], bg: '#091216' },
     { id: 'yorugh', nomi: "Yorug'", izoh: 'Kunduzgi · to\'q sariq', e: '☀️', c: ['#ff5a1f', '#ff9f1c', '#7c3aed'], bg: '#f1f3fb' },
     { id: 'shaftoli', nomi: 'Shaftoli', izoh: 'Kunduzgi · pushti', e: '🌸', c: ['#ff4f87', '#ff9966', '#c026d3'], bg: '#fff0ec' },
     { id: 'osmon', nomi: 'Osmon', izoh: 'Kunduzgi · moviy', e: '🩵', c: ['#0a84ff', '#22c7ee', '#6366f1'], bg: '#e8f5ff' },
     { id: 'yalpiz', nomi: 'Yalpiz', izoh: 'Kunduzgi · yashil', e: '🍃', c: ['#10b981', '#84cc16', '#0ea5e9'], bg: '#eafbf2' }
   ];
+  var GKEY = 'yuk-glow'; // 'on' = nurli, 'off' = nursiz (standart: nursiz)
+  function getGlow() { try { return localStorage.getItem(GKEY) === 'on' ? 'on' : 'off'; } catch (e) { return 'off'; } }
+  function applyGlow(v) { document.documentElement.setAttribute('data-glow', v); }
+  function setGlow(v) { try { localStorage.setItem(GKEY, v); } catch (e) {} applyGlow(v); mark(); }
+  applyGlow(getGlow());
   function valid(id) { return THEMES.some(function (t) { return t.id === id; }); }
   function get() { try { var v = localStorage.getItem(KEY); return valid(v) ? v : 'quyosh'; } catch (e) { return 'quyosh'; } }
   function apply(id) {
@@ -34,6 +44,8 @@
   var pop, fab;
   function mark() {
     if (!pop) return;
+    var g = getGlow(), gb = pop.querySelector('.th-glow');
+    if (gb) { gb.classList.toggle('on', g === 'on'); gb.querySelector('.th-gs').textContent = g === 'on' ? 'Yoqilgan' : "O'chirilgan"; }
     var cur = get();
     pop.querySelectorAll('.th-opt').forEach(function (b) { b.classList.toggle('on', b.dataset.id === cur); });
   }
@@ -43,7 +55,7 @@
     fab.type = 'button'; fab.className = 'th-fab'; fab.title = 'Dizaynni tanlash'; fab.setAttribute('aria-label', 'Dizaynni tanlash'); fab.textContent = '🎨';
     pop = document.createElement('div');
     pop.className = 'th-pop hidden';
-    pop.innerHTML = '<div class="th-title">🎨 Dizayn tanlang · ' + THEMES.length + ' ta</div><div class="th-grid">' + THEMES.map(function (t) {
+    pop.innerHTML = '<div class="th-title">🎨 Dizayn tanlang · ' + THEMES.length + ' ta</div><button type="button" class="th-glow"><span>✨ Nur (yorqin yog\'du)</span><span class="th-gs"></span></button><div class="th-grid">' + THEMES.map(function (t) {
       return (t.id === 'klassik' ? '<div class="th-grp">Qorong\'u dizaynlar</div>' : '') + (t.id === 'yorugh' ? '<div class="th-grp">Kunduzgi (oq fon) dizaynlar</div>' : '') + '<button type="button" class="th-opt" data-id="' + t.id + '"><span class="th-sw" style="background:' + t.bg + '">' +
         '<i style="background:' + t.c[0] + '"></i><i style="background:' + t.c[1] + '"></i><i style="background:' + t.c[2] + '"></i></span>' +
         '<span>' + t.e + ' ' + t.nomi + '<small>' + t.izoh + '</small></span><span class="th-check">✓</span></button>';
@@ -52,6 +64,7 @@
     fab.addEventListener('click', function (e) { e.stopPropagation(); pop.classList.toggle('hidden'); });
     pop.addEventListener('click', function (e) {
       e.stopPropagation();
+      if (e.target.closest('.th-glow')) { setGlow(getGlow() === 'on' ? 'off' : 'on'); return; }
       var b = e.target.closest('.th-opt'); if (b) set(b.dataset.id);
     });
     document.addEventListener('click', function () { pop.classList.add('hidden'); });
@@ -59,5 +72,5 @@
     mark();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build); else build();
-  window.YukTheme = { set: set, get: get, list: THEMES };
+  window.YukTheme = { set: set, get: get, list: THEMES, setGlow: setGlow, getGlow: getGlow };
 })();

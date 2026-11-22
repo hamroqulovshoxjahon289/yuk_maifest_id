@@ -1,0 +1,21 @@
+{
+  "categories": [
+    {
+      "id": "ae78c0e0-bc9a-4497-9a99-2133ea260c31",
+      "yonalish": "mebel",
+      "nomi": "shkaf"
+    }
+  ],
+  "models": [
+    {
+      "id": "22c458fa-f24f-4992-a2b4-99729f6e89d7",
+      "categoryId": "ae78c0e0-bc9a-4497-9a99-2133ea260c31",
+      "nomi": "jesika",
+      "qoldiq": 0,
+      "createdAt": "2026-11-22T11:34:08.270Z",
+      "matrasKetadi": false,
+      "matrasIds": []
+    }
+  ],
+  "harakat": []
+}

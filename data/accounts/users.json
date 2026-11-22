@@ -1,13 +1,32 @@
 [
   {
-    "id": "99aa4966-c7e1-4aee-98c9-1d707407e956",
+    "id": "44b0771d-fb4c-427f-990d-a4d44575635c",
     "role": "owner",
     "name": "Shoxjahon Hamroqulov",
     "email": "hamroqulovshoxjahon289@gmail.com",
     "googleSub": "100676212351056207580",
     "active": true,
     "tokenVersion": 0,
-    "createdAt": "2026-11-22T10:47:14.643Z",
-    "ownerId": "99aa4966-c7e1-4aee-98c9-1d707407e956"
+    "createdAt": "2026-11-22T11:33:26.060Z",
+    "ownerId": "44b0771d-fb4c-427f-990d-a4d44575635c"
+  },
+  {
+    "id": "a10ecc66-1e23-495b-9e31-010522db5cd6",
+    "role": "ishchi",
+    "ownerId": "44b0771d-fb4c-427f-990d-a4d44575635c",
+    "name": "aziz",
+    "login": "aziz12",
+    "passHash": "scrypt$264d7e6c9fd200b1109beaa96664cdcf$6da167d49769e6e8c5aa96bcd5ca0261f157334eb96bc8a107a7804d80f3e12a08d1e2c7d51164c7e87592315fb72f088ce95b7a3f7adc5601669ba70b3b7606",
+    "active": true,
+    "tokenVersion": 1,
+    "perms": {
+      "add": true,
+      "edit": true,
+      "pay": false,
+      "delete": false,
+      "reorder": false,
+      "team": false
+    },
+    "createdAt": "2026-11-22T11:35:49.705Z"
   }
 ]
