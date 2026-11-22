@@ -20,6 +20,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="yuk-style.css" />
 <link rel="stylesheet" href="premium.css" />
+<script src="theme.js"></script>
 <script src="fx.js" defer></script>
 </head>
 <body>
@@ -122,11 +123,16 @@
 
       <div id="zalogRow" style="display:none">
         <div class="field-row">
-          <label>💵 Zalog (so'm) — faqat egasi va sotuvchi ko'radi
+          <label>💵 Zalog (so'm) — faqat admin ko'radi. Olinmagan bo'lsa bo'sh qoldiring
             <input type="number" id="f_zalog" min="0" placeholder="masalan: 500000" />
           </label>
           <label>Zalog izohi
             <input type="text" id="f_zalogIzoh" maxlength="200" placeholder="masalan: naqd, chek №15" />
+          </label>
+        </div>
+        <div class="field-row">
+          <label>📅 Zalog qachon olindi (hisobotda shu kunga yoziladi)
+            <input type="date" id="f_zalogSana" />
           </label>
         </div>
       </div>

@@ -1,0 +1,51 @@
+[
+  {
+    "id": "4a371378-6d59-4057-bfc1-f8fa47bd5a2f",
+    "sana": "2026-11-25",
+    "holat": "qizil",
+    "kategoriya": {
+      "id": "036a0005-8ba8-478f-a854-a444208a4195",
+      "nomi": "Shkaf"
+    },
+    "nomi": "jesika 1 ta",
+    "skladItems": [
+      {
+        "modelId": "d09986b4-c7c1-4412-9524-49c5f782fa99",
+        "yonalish": "mebel",
+        "kategoriya": "shkaf",
+        "model": "jesika",
+        "soni": 1
+      }
+    ],
+    "skladCut": false,
+    "skladCutItems": [],
+    "matras": {
+      "bor": false,
+      "turi": null
+    },
+    "izoh": "",
+    "manzil": {
+      "hudud": "",
+      "dom": "",
+      "padyez": "",
+      "etaj": ""
+    },
+    "astatka": 1000000,
+    "tel1": "",
+    "tel2": "",
+    "zborshik": null,
+    "labo": null,
+    "filial": null,
+    "yaratdi": "Shoxjahon Hamroqulov",
+    "tolovlar": [],
+    "tolandi": false,
+    "tartib": 1,
+    "createdAt": "2026-11-22T10:49:35.488Z",
+    "zalog": {
+      "summa": 199994,
+      "izoh": "",
+      "sana": "2026-11-22",
+      "kim": "Shoxjahon Hamroqulov"
+    }
+  }
+]

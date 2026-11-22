@@ -455,6 +455,7 @@ function setZalogFields(z) {
   document.getElementById('zalogRow').style.display = isOwner() ? '' : 'none';
   document.getElementById('f_zalog').value = z && z.summa ? z.summa : '';
   document.getElementById('f_zalogIzoh').value = z && z.izoh ? z.izoh : '';
+  document.getElementById('f_zalogSana').value = (z && z.sana) || toISO(new Date()); // zalog kiritilgan kun (standart: bugun)
 }
 
 function closeModals() {
@@ -527,6 +528,7 @@ loadForm.addEventListener('submit', async (e) => {
   if (isOwner()) {
     base.zalogSumma = document.getElementById('f_zalog').value;
     base.zalogIzoh = document.getElementById('f_zalogIzoh').value.trim();
+    base.zalogSana = document.getElementById('f_zalogSana').value; // zalog olingan kun
   }
 
   try {
@@ -1899,7 +1901,7 @@ function openPendingView(p) {
     ${row('Yuklar', (p.skladItems || []).length ? p.skladItems.map((i) => `${YON_ICON[i.yonalish] || '📦'} ${i.yonalish === 'matras' ? '' : `${escapeHtml(i.kategoriya)} · `}<b>${escapeHtml(i.model)}</b> × ${i.soni}${i.fromModel ? ` <span class="sk-muted">(${escapeHtml(i.fromModel)} uchun)</span>` : ''}`).join('<br>') : '<span class="sk-muted">Yuk tanlanmagan (faqat tavsif)</span>')}
     ${row('Manzil', escapeHtml(addr))}
     ${row('Astatka', `${fmtMoney(p.astatka)} so'm`)}
-    ${row('💵 Zalog', p.zalogSumma ? `<b>${fmtMoney(p.zalogSumma)} so'm</b>${p.zalogIzoh ? `<br><span class="muted">${escapeHtml(p.zalogIzoh)}</span>` : ''}` : 'Yo\'q')}
+    ${p.zalogSumma ? row('💵 Zalog', `<b>${fmtMoney(p.zalogSumma)} so'm</b>${p.zalogIzoh ? `<br><span class="muted">${escapeHtml(p.zalogIzoh)}</span>` : ''}${p.kunSana ? `<br><span class="muted">${escapeHtml(p.kunSana)}</span>` : ''}`) : ''}
     ${row('1-telefon', escapeHtml(p.tel1 || '—'))}
     ${row('2-telefon', escapeHtml(p.tel2 || '—'))}
     ${row('Filial', escapeHtml(p.filial?.nomi || '—'))}
@@ -1939,7 +1941,7 @@ document.getElementById('pvEditBtn').onclick = () => {
   const pseudo = {
     kategoriya: p.kategoriya, nomi: p.nomi, matras: p.matras, izoh: p.izoh, sana: p.sana, holat: 'qizil',
     manzil: p.manzil, astatka: p.astatka, tel1: p.tel1, tel2: p.tel2, filial: p.filial, zborshik: null, labo: null,
-    skladItems: p.skladItems, zalog: p.zalogSumma ? { summa: p.zalogSumma, izoh: p.zalogIzoh } : null,
+    skladItems: p.skladItems, zalog: p.zalogSumma ? { summa: p.zalogSumma, izoh: p.zalogIzoh, sana: p.kunSana } : null,
   };
   openEditModal(pseudo);               // formani to'ldiradi (va boshqa oynalarni yopadi)
   editingId = null;
@@ -2091,7 +2093,7 @@ function renderZalogReport() {
       <label>Qaysi sanagacha<input type="date" id="zalTo" value="${to}" /></label>
     </div>
     <div class="report-scroll">${zalogTables(d, false)}</div>
-    <p class="report-note">Zalog sotuvchi zakazni yuborgan kunga yoziladi va faqat tasdiqlangan zakazlar hisoblanadi. Bu ma'lumotni xodimlar, zborshik va shafyorlar ko'rmaydi. Excel faylda ham «Zalog» varag'i bor.</p>`;
+    <p class="report-note">Zalog zakazning jo'natish kuniga emas, balki zalog kiritilgan (olingan) kunga yoziladi. Zalog olinmagan zakazlar bu hisobotda ko'rinmaydi. Bu ma'lumotni xodimlar, zborshik va shafyorlar ko'rmaydi. Excel faylda ham «Zalog» varag'i bor.</p>`;
   document.getElementById('zalFrom').onchange = renderZalogReport;
   document.getElementById('zalTo').onchange = renderZalogReport;
   document.getElementById('zalPrintBtn').onclick = () => {

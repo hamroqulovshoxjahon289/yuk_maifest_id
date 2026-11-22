@@ -451,13 +451,15 @@ function publicLoad(l, user) {
 
 function httpFail(status, message) { const e = new Error(message); e.status = status; return e; }
 // Zalog (garov/oldindan olingan pul): summa bo'sh yoki 0 bo'lsa — zalog yo'q
-function makeZalog(summa, izoh, kim) {
+// Zalog sanasi = zalog qachon kiritilgan/olingan kun (zakazning jo'natish kuniga bog'liq EMAS). Bo'sh bo'lsa — bugun.
+const validDay = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '');
+function makeZalog(summa, izoh, kim, sana) {
   if (summa === undefined || summa === null || String(summa).trim() === '') return null;
   const n = Math.round(Number(String(summa).replace(/\s/g, '')));
   if (!Number.isFinite(n) || n < 0) throw httpFail(400, "Zalog summasini to'g'ri kiriting");
   if (n === 0) return null;
   if (n > 1e12) throw httpFail(400, 'Zalog summasi juda katta');
-  return { summa: n, izoh: String(izoh || '').trim().slice(0, 200), sana: todayStr(), kim: kim || '' };
+  return { summa: n, izoh: String(izoh || '').trim().slice(0, 200), sana: validDay(sana) || todayStr(), kim: kim || '' };
 }
 
 function buildWorkbook(loads, withZalog) {
@@ -493,7 +495,7 @@ function buildWorkbook(loads, withZalog) {
                 "Qoldiq": qoldiq,
                 "To'landimi": l.tolandi ? "To'liq to'landi" : (jamiTolangan > 0 ? 'Qisman to\'landi' : "Yo'q"),
                 'Yaratilgan': l.createdAt || '',
-                ...(withZalog ? { 'Sotuvchi': l.sotuvchi?.ism || '', 'Zalog': l.zalog?.summa || 0, 'Zalog izohi': l.zalog?.izoh || '' } : {}),
+                ...(withZalog ? { 'Sotuvchi': l.sotuvchi?.ism || '', 'Zalog': l.zalog?.summa || '', 'Zalog izohi': l.zalog?.izoh || '' } : {}),
             };
         });
         const sheet = XLSX.utils.json_to_sheet(rows);
@@ -940,7 +942,7 @@ app.post('/api/loads', requireAuth, staffOnly, can('add'), actionCode, (req, res
   let newLoad;
   try {
     // Zalog faqat egasi kirita oladi (xodimniki e'tiborga olinmaydi)
-    const zalog = req.user.role === 'owner' ? makeZalog(req.body.zalogSumma, req.body.zalogIzoh, req.user.name) : null;
+    const zalog = req.user.role === 'owner' ? makeZalog(req.body.zalogSumma, req.body.zalogIzoh, req.user.name, req.body.zalogSana) : null;
     newLoad = addLoadCore(req, req.body, { zalog });
   } catch (e) { return skladError(res, e); }
   res.json(publicLoad(newLoad, req.user));
@@ -992,9 +994,9 @@ app.put('/api/loads/:id', requireAuth, staffOnly, can('edit'), actionCode, (req,
   };
   if (req.user.role === 'owner' && req.body.zalogSumma !== undefined) {
     try {
-      const z = makeZalog(req.body.zalogSumma, req.body.zalogIzoh, req.user.name);
+      const z = makeZalog(req.body.zalogSumma, req.body.zalogIzoh, req.user.name, req.body.zalogSana);
       const old = loads[idx].zalog;
-      if (z && old) { z.sana = old.sana || z.sana; z.kim = old.kim || z.kim; } // zalog sanasi/kim o'zgarmaydi
+      if (z && old) { if (!validDay(req.body.zalogSana)) z.sana = old.sana || z.sana; z.kim = old.kim || z.kim; } // sana ko'rsatilmasa eskisi qoladi
       loads[idx].zalog = z || undefined;
       if (!z) delete loads[idx].zalog;
     } catch (e) { return skladError(res, e); }
@@ -1223,7 +1225,7 @@ function pendingToBody(p) {
     sana: p.sana, kategoriyaId: p.kategoriya && p.kategoriya.id, nomi: p.nomi, matras: p.matras, izoh: p.izoh,
     manzil: p.manzil, astatka: p.astatka, tel1: p.tel1, tel2: p.tel2, filialId: p.filial && p.filial.id,
     skladItems: sklad.toInput(p.skladItems),
-    zalogSumma: p.zalogSumma, zalogIzoh: p.zalogIzoh,
+    zalogSumma: p.zalogSumma, zalogIzoh: p.zalogIzoh, zalogSana: p.kunSana,
   };
 }
 // Sotuvchiga o'z qabul qilingan zakazi (zalog bilan) ko'rsatiladi — boshqa xodimlarning ma'lumoti emas
@@ -1322,8 +1324,8 @@ app.post('/api/pending/:id/approve', requireAuth, ownerOnly, actionCode, (req, r
   const body = { ...pendingToBody(p), ...req.body };
   let load;
   try {
-    const zalog = makeZalog(body.zalogSumma, body.zalogIzoh);
-    if (zalog) { zalog.sana = p.kunSana || zalog.sana; zalog.kim = p.sotuvchi.ism; } // zalog sotuvchi nomi va kiritilgan kuni bilan yoziladi
+    const zalog = makeZalog(body.zalogSumma, body.zalogIzoh, undefined, body.zalogSana || p.kunSana);
+    if (zalog) { zalog.kim = p.sotuvchi.ism; } // zalog sotuvchi nomi va kiritilgan kuni bilan yoziladi
     load = addLoadCore(req, body, { sotuvchi: p.sotuvchi, zalog });
   } catch (e) { return skladError(res, e); }
   list.splice(idx, 1);

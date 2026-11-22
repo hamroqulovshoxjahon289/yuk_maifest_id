@@ -167,3 +167,28 @@ Admin (ega) tizimda **hamma kim nima qilganini** ko'ra oladi. Xodim, zborshik, s
 
 ## Eski ma'lumotlar haqida
 Eski zakazlar o'zgarmaydi. Eski mebel/zapchast sklad qoldiqlari endi hisoblanmaydi, faqat matras. Eski yuklarda saqlangan «Matras o'lchami» belgisi ko'rinishda qoladi.
+
+
+## 🎨 5 xil dizayn (mavzu) — har kim o'zi tanlaydi
+Har bir sahifaning o'ng pastki burchagida **🎨** tugmasi bor. Bosib dizaynni tanlang, tanlov shu brauzer/telefonda eslab qolinadi (har bir xodim o'ziniki, bir-biriga ta'sir qilmaydi):
+1. 🌅 **Quyosh** — qorong'u, to'q sariq (standart)
+2. 🌊 **Okean** — qorong'u, moviy
+3. 💜 **Neon** — qorong'u, pushti-binafsha
+4. 🌿 **Tabiat** — qorong'u, yashil
+5. ☀️ **Yorug'** — kunduzgi, oq fon
+
+**Yana 10 ta qo'shildi (jami 15 ta):** 🔥 Olov, 🍇 Uzum, 🌹 Atirgul, 🌌 Kosmos, 🍋 Limon, 💎 Firuza, ⚫ Grafit (qorong'u) va 🌸 Shaftoli, 🩵 Osmon, 🍃 Yalpiz (kunduzgi, oq fon).
+
+Fayllar: `public/theme.js` (tanlagich), `public/premium.css` (ranglar o'zgaruvchilari `html[data-theme="..."]`). Yangi dizayn qo'shish uchun premium.css oxiridagi bloklardan birini nusxalab ranglarni o'zgartirish yetarli.
+
+
+## 💵 Zalog (yangilangan)
+- Zalog **olingan (kiritilgan) kunga** yoziladi, zakazning jo'natish kuniga emas. Masalan, zalog 23-noyabrda olinib, zakaz 25-noyabrga yozilsa, hisobotda zalog **23-noyabr** ostida chiqadi.
+- Admin zakaz formasida **«📅 Zalog qachon olindi»** sanasini ko'radi (standart: bugun) va o'zgartira oladi. Sana ko'rsatilmasa, avval yozilgani saqlanadi.
+- Sotuvchi zakaz yuborsa, zalog sotuvchi yuborgan kun bilan yoziladi (admin tasdiqlashda sanani o'zgartirishi mumkin).
+- **Zalog olinmagan** bo'lsa hech narsa yozilmaydi: kartada, hisobotda, Excel'da zalog qatori ham, 0 ham chiqmaydi.
+- Zalogni faqat **admin** ko'radi (xodim, zborshik, labo ko'rmaydi). Sotuvchi faqat o'zi kiritgan zalogni o'z sahifasida ko'radi.
+- Astatka hisoboti o'zgartirilmagan.
+
+## 🕰️ Klassik dizayn
+🎨 tanlagichda «Klassik» — saytning eski (dastlabki) ranglari. Jami 16 ta dizayn.
