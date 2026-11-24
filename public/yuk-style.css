@@ -898,3 +898,14 @@ body { background-image: radial-gradient(circle at 12% -5%, #ff7a4524, transpare
 ::-webkit-scrollbar-thumb:hover { background: #ff7a4577; background-clip: padding-box; border: 2px solid transparent; }
 @media (max-width: 560px) { .pk-fields.two { grid-template-columns: 1fr 90px; } .pk-chip { padding: 9px 12px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+.nk-day-btn { margin-left: auto; padding: 2px 8px; }
+
+/* ============ NAKLADNOY chop etish ============ */
+@media print {
+  body.nk-printing > *:not(#printArea) { display: none !important; }
+  body.nk-printing #printArea { position: static !important; padding: 0 !important; margin: 0 !important; background: #fff; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .nk-sheet { display: flex; align-items: flex-start; break-after: page; page-break-after: always; font-family: Calibri, Carlito, Arial, sans-serif; color: #000; }
+  .nk-sheet:last-child { break-after: auto; page-break-after: auto; }
+  .nk-col { flex: none; min-width: 0; }
+  .nk-col tr { break-inside: avoid; }
+}

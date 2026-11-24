@@ -1,0 +1,68 @@
+[
+  {
+    "id": "67d2dae8-596d-4035-90ea-bb94be5c5a7c",
+    "sana": "2026-11-24",
+    "holat": "qizil",
+    "kategoriya": {
+      "id": "8f775219-6082-438c-9b56-cd42a855c999",
+      "nomi": "sp"
+    },
+    "nomi": "miss 1 ta",
+    "mijoz": "amir",
+    "skladItems": [
+      {
+        "modelId": "91b96f6b-e165-47c2-b9a5-31139b209348",
+        "yonalish": "mebel",
+        "kategoriya": "sp",
+        "model": "miss",
+        "soni": 1
+      }
+    ],
+    "skladCut": false,
+    "skladCutItems": [],
+    "matras": {
+      "bor": false,
+      "turi": null
+    },
+    "izoh": "",
+    "manzil": {
+      "hudud": "ravonak",
+      "dom": "",
+      "padyez": "",
+      "etaj": "1"
+    },
+    "astatka": 1600000,
+    "tel1": "979351315",
+    "tel2": "987651416",
+    "zborshik": {
+      "id": "22d7bca0-bd5c-4b75-b549-bdcaaec7a3ad",
+      "ism": "elmurod",
+      "telefon": ""
+    },
+    "labo": {
+      "id": "48d605a5-3407-46d9-8292-33116720a927",
+      "raqami": "312",
+      "haydovchi": "aziz",
+      "telefon": ""
+    },
+    "filial": {
+      "id": "251b9965-d10d-4cfe-b76c-ddb8483bb12f",
+      "nomi": "xazora1"
+    },
+    "yaratdi": "Shoxjahon Hamroqulov",
+    "tolovlar": [],
+    "tolandi": false,
+    "tartib": 1,
+    "createdAt": "2026-11-24T03:02:40.122Z",
+    "zalog": {
+      "summa": 3000000,
+      "izoh": "",
+      "sana": "2026-11-24",
+      "kim": "Shoxjahon Hamroqulov",
+      "filial": {
+        "id": "251b9965-d10d-4cfe-b76c-ddb8483bb12f",
+        "nomi": "xazora1"
+      }
+    }
+  }
+]

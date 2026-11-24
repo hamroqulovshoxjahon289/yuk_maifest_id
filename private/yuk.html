@@ -134,10 +134,18 @@
           <label>📅 Zalog qachon olindi (hisobotda shu kunga yoziladi)
             <input type="date" id="f_zalogSana" />
           </label>
+          <label>🏬 Zalogni qaysi filial oldi
+            <select id="f_zalogFilial"></select>
+          </label>
         </div>
       </div>
 
-      <div class="section-label">Mijoz telefonlari</div>
+      <div class="section-label">Mijoz</div>
+      <div class="field-row">
+        <label>Mijoz ismi (nakladnoyga chiqadi)
+          <input type="text" id="f_mijoz" maxlength="100" placeholder="masalan: Aliyev Vali" />
+        </label>
+      </div>
       <div class="field-row">
         <label>1-nomer
           <input type="tel" id="f_tel1" placeholder="+998 90 123 45 67" />
@@ -209,7 +217,8 @@
 
     <div class="modal-actions">
       <button class="danger-btn" id="deleteLoadBtn">O'chirish</button>
-      <button class="ghost-btn" id="printLoadBtn">🖨️ Chop etish</button>
+      <button class="ghost-btn" id="printLoadBtn">🖨️ Nakladnoy chop etish</button>
+          <button class="ghost-btn" id="wordLoadBtn" title="Word fayl sifatida yuklab olish">⬇ Word</button>
       <button class="ghost-btn" id="editLoadBtn">Tahrirlash</button>
     </div>
 
@@ -476,6 +485,7 @@
   </div>
 </div>
 <input type="file" id="skFile" accept="image/*" class="hidden" />
+<input type="file" id="skWordFile" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden" />
 
 <!-- ============ SKLAD MODAL ============ -->
 <div id="skModal" class="modal-overlay hidden">

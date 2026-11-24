@@ -4,6 +4,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const nakladnoy = require('./nakladnoy');
 
 const YONALISHLAR = ['matras', 'mebel', 'zapchast'];
 const YONALISH_NOMI = { matras: 'Matras', mebel: 'Mebel', zapchast: 'Zapchast' };
@@ -11,6 +12,9 @@ const MAX_QTY = 1000000;
 const MAX_HARAKAT = 5000;
 const MAX_IMG = 4 * 1024 * 1024;
 const IMG_MIME = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+const MAX_WORD = 5 * 1024 * 1024; // Word fayl (nakladnoy: chap — mijoz ma'lumotlari, o'ng — yuklar) — 5 MB gacha
+const isDocx = (b) => Buffer.isBuffer(b) && b.length > 100 && b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04; // ZIP (.docx)
+
 
 // Faylning haqiqiy turini boshidagi baytlardan aniqlaymiz (nomiga ishonmaymiz)
 function sniffImage(b) {
@@ -50,6 +54,11 @@ function createSklad(store) {
       try { fs.unlinkSync(path.join(p.skladImg, `${m.id}.${ext}`)); } catch { /* yo'q bo'lsa — mayli */ }
     });
     m.rasm = null;
+  }
+  const wordFile = (p, m) => path.join(p.skladWord, `${m.id}.docx`);
+  function removeWord(p, m) {
+    [wordFile(p, m)].forEach((f) => { try { fs.unlinkSync(f); } catch { /* yo'q bo'lsa — mayli */ } });
+    m.word = null;
   }
   // Zborshik sahifasi uchun: mahsulot qatoriga "suratim bor" belgisini qo'shadi (surat o'zi emas)
   function withPhotoFlags(p, loads) {
@@ -377,6 +386,7 @@ function createSklad(store) {
       const i = s.models.findIndex((x) => x.id === req.params.id);
       if (i === -1) return res.status(404).json({ error: 'Model topilmadi' });
       removeImage(req.paths, s.models[i]);
+      removeWord(req.paths, s.models[i]);
       const gone = s.models[i].id;
       s.models.splice(i, 1);
       s.models.forEach((x) => { if (Array.isArray(x.matrasIds)) x.matrasIds = x.matrasIds.filter((id) => id !== gone); });
@@ -477,6 +487,43 @@ function createSklad(store) {
       res.sendFile(file);
     });
 
+    // ---- Model Word fayli (.docx): shu modelga ketadigan yuklar ro'yxati. Nakladnoyni chop etishda o'ng tomonga chiqadi.
+    app.put('/api/sklad/models/:id/word', requireAuth, staffOnly, manage, express.raw({ type: () => true, limit: MAX_WORD }), async (req, res) => {
+      const s = read(req.paths);
+      const m = s.models.find((x) => x.id === req.params.id);
+      if (!m) return res.status(404).json({ error: 'Model topilmadi' });
+      if (!isDocx(req.body)) return res.status(400).json({ error: "Word fayl tanlanmadi yoki format noto'g'ri (.docx bo'lsin; eski .doc ni Word'da «Saqlash → .docx» qiling)" });
+      let info;
+      try { info = await nakladnoy.analyze(req.body); } catch (e) { return res.status(400).json({ error: "Word faylni o'qib bo'lmadi: " + String(e.message || e).slice(0, 120) }); }
+      if (!info.chap && !info.matn) return res.status(400).json({ error: 'Word fayl ichida matn topilmadi' });
+      let nomi = 'yuklar.docx';
+      try { nomi = decodeURIComponent(String(req.get('x-file-name') || '')).replace(/[\\/:*?"<>|\x00-\x1f]/g, '').trim().slice(0, 80) || nomi; } catch { /* nom noto'g'ri — standart */ }
+      fs.mkdirSync(req.paths.skladWord, { recursive: true });
+      const f = wordFile(req.paths, m);
+      fs.writeFileSync(`${f}.tmp`, req.body); fs.renameSync(`${f}.tmp`, f);
+      m.word = { nomi, v: Date.now(), size: req.body.length, chap: !!info.chap }; // chap: накладной (mijoz ma'lumotlari) qismi topildi
+      write(req.paths, s);
+      res.json(m);
+    });
+    app.use('/api/sklad/models/:id/word', (err, req, res, next) => {
+      if (err && (err.type === 'entity.too.large' || err.status === 413)) return res.status(413).json({ error: 'Word fayl juda katta (5 MB gacha)' });
+      return next(err);
+    });
+    app.delete('/api/sklad/models/:id/word', requireAuth, staffOnly, manage, (req, res) => {
+      const s = read(req.paths);
+      const m = s.models.find((x) => x.id === req.params.id);
+      if (!m) return res.status(404).json({ error: 'Model topilmadi' });
+      removeWord(req.paths, m);
+      write(req.paths, s);
+      res.json(m);
+    });
+    // Asl Word faylni yuklab olish (tekshirish uchun)
+    app.get('/api/sklad/models/:id/word/file', requireAuth, staffOnly, (req, res) => {
+      const m = read(req.paths).models.find((x) => x.id === req.params.id);
+      const f = m && m.word && wordFile(req.paths, m);
+      if (!f || !fs.existsSync(f)) return res.status(404).json({ error: "Word fayl yo'q" });
+      res.download(f, (m.word.nomi || 'yuklar.docx').replace(/[^\w.\- ()а-яА-ЯёЁ]/g, '_'));
+    });
     app.get('/api/sklad/hisobot', requireAuth, staffOnly, (req, res) => {
       const iso = /^\d{4}-\d{2}-\d{2}$/;
       const today = todayStr();

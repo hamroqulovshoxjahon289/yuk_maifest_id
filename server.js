@@ -9,6 +9,7 @@ const crypto = require('crypto');
 const XLSX = require('xlsx');
 const { createStore } = require('./store');
 const { createSklad } = require('./sklad');
+const nakladnoy = require('./nakladnoy');
 const { createNotify } = require('./notify');
 const { createAudit } = require('./audit');
 const {
@@ -453,13 +454,21 @@ function httpFail(status, message) { const e = new Error(message); e.status = st
 // Zalog (garov/oldindan olingan pul): summa bo'sh yoki 0 bo'lsa — zalog yo'q
 // Zalog sanasi = zalog qachon kiritilgan/olingan kun (zakazning jo'natish kuniga bog'liq EMAS). Bo'sh bo'lsa — bugun.
 const validDay = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '');
-function makeZalog(summa, izoh, kim, sana) {
+function makeZalog(summa, izoh, kim, sana, filial) {
   if (summa === undefined || summa === null || String(summa).trim() === '') return null;
   const n = Math.round(Number(String(summa).replace(/\s/g, '')));
   if (!Number.isFinite(n) || n < 0) throw httpFail(400, "Zalog summasini to'g'ri kiriting");
   if (n === 0) return null;
   if (n > 1e12) throw httpFail(400, 'Zalog summasi juda katta');
-  return { summa: n, izoh: String(izoh || '').trim().slice(0, 200), sana: validDay(sana) || todayStr(), kim: kim || '' };
+  const z = { summa: n, izoh: String(izoh || '').trim().slice(0, 200), sana: validDay(sana) || todayStr(), kim: kim || '' };
+  if (filial && filial.id) z.filial = { id: filial.id, nomi: filial.nomi }; // zalogni qaysi filial olgan
+  return z;
+}
+
+// Zalogni qaysi filial olgani: aniq tanlangan (zalogFilialId) yoki zakazning filiali
+function zalogFilialOf(req, b) {
+  const id = b.zalogFilialId !== undefined && b.zalogFilialId !== null ? b.zalogFilialId : b.filialId;
+  return id ? snapFilial(req.paths, id) : null;
 }
 
 function buildWorkbook(loads, withZalog) {
@@ -495,7 +504,7 @@ function buildWorkbook(loads, withZalog) {
                 "Qoldiq": qoldiq,
                 "To'landimi": l.tolandi ? "To'liq to'landi" : (jamiTolangan > 0 ? 'Qisman to\'landi' : "Yo'q"),
                 'Yaratilgan': l.createdAt || '',
-                ...(withZalog ? { 'Sotuvchi': l.sotuvchi?.ism || '', 'Zalog': l.zalog?.summa || '', 'Zalog izohi': l.zalog?.izoh || '' } : {}),
+                ...(withZalog ? { 'Sotuvchi': l.sotuvchi?.ism || '', 'Zalog': l.zalog?.summa || '', 'Zalogni olgan filial': l.zalog?.filial?.nomi || (l.zalog ? (l.filial?.nomi || '') : ''), 'Zalog izohi': l.zalog?.izoh || '' } : {}),
             };
         });
         const sheet = XLSX.utils.json_to_sheet(rows);
@@ -566,16 +575,16 @@ function buildWorkbook(loads, withZalog) {
                 'Zalog sanasi': l.zalog.sana || '',
                 'Sotuvchi': l.sotuvchi?.ism || l.zalog.kim || '',
                 'Buyurtma': l.nomi || '',
-                'Filial': l.filial?.nomi || '',
+                'Zalogni olgan filial': l.zalog.filial?.nomi || l.filial?.nomi || '',
                 'Jo\'natish sanasi': l.sana,
                 'Zalog summasi': Number(l.zalog.summa) || 0,
                 'Izoh': l.zalog.izoh || '',
             }));
             zRows.sort((a, b) => String(a['Zalog sanasi']).localeCompare(String(b['Zalog sanasi'])));
             const jamiZalog = zRows.reduce((sum, r) => sum + r['Zalog summasi'], 0);
-            zRows.push({ 'Zalog sanasi': '', 'Sotuvchi': '', 'Buyurtma': '', 'Filial': '', 'Jo\'natish sanasi': 'JAMI:', 'Zalog summasi': jamiZalog, 'Izoh': '' });
+            zRows.push({ 'Zalog sanasi': '', 'Sotuvchi': '', 'Buyurtma': '', 'Zalogni olgan filial': '', 'Jo\'natish sanasi': 'JAMI:', 'Zalog summasi': jamiZalog, 'Izoh': '' });
             const zSheet = XLSX.utils.json_to_sheet(zRows);
-            zSheet['!cols'] = [{ wch: 13 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 15 }, { wch: 26 }];
+            zSheet['!cols'] = [{ wch: 13 }, { wch: 18 }, { wch: 18 }, { wch: 20 }, { wch: 14 }, { wch: 15 }, { wch: 26 }];
             XLSX.utils.book_append_sheet(wb, zSheet, 'Zalog');
         }
 
@@ -843,6 +852,35 @@ function normalizeOrder(loads) {
 
 // ---------- Sklad (yo'nalish -> kategoriya -> model, kirim, hisobot) ----------
 sklad.mount(app, { requireAuth, staffOnly, can, deleteCode, readLoads, todayStr, express });
+
+// Nakladnoy (Word): chap tomon zakaz ma'lumoti bilan to'ldiriladi, o'ng tomonda modellarning yuk jadvallari. Bir nechta zakaz — har biri alohida varaqdan.
+const nakladnoyCtx = (req, res) => {
+  const ids = (Array.isArray(req.body.ids) ? req.body.ids : [req.body.id]).map(String).filter(Boolean).slice(0, 60);
+  if (!ids.length) { res.status(400).json({ error: 'Zakaz tanlanmagan' }); return null; }
+  const all = readLoads(req.paths);
+  const loads = ids.map((id) => all.find((l) => l.id === id)).filter(Boolean);
+  if (!loads.length) { res.status(404).json({ error: 'Zakaz topilmadi' }); return null; }
+  const modelDocx = (id) => {
+    if (!/^[\w-]+$/.test(String(id || ''))) return null;
+    try { return fs.readFileSync(path.join(req.paths.skladWord, `${id}.docx`)); } catch { return null; }
+  };
+  return { loads, modelDocx };
+};
+const nakladnoyErr = (res, e) => res.status(e.status || 500).json({ error: e.status ? e.message : 'Nakladnoy tayyorlanmadi: ' + String(e.message || e).slice(0, 120) });
+// Brauzerdan to'g'ridan-to'g'ri chop etish uchun (HTML)
+app.post('/api/nakladnoy/html', requireAuth, staffOnly, async (req, res) => {
+  const c = nakladnoyCtx(req, res); if (!c) return;
+  try { res.set('Cache-Control', 'no-store'); res.json(await nakladnoy.buildHtml(c.loads, c.modelDocx)); } catch (e) { nakladnoyErr(res, e); }
+});
+// Word fayl sifatida yuklab olish
+app.post('/api/nakladnoy', requireAuth, staffOnly, async (req, res) => {
+  const c = nakladnoyCtx(req, res); if (!c) return;
+  try {
+    const buf = await nakladnoy.build(c.loads, c.modelDocx);
+    res.set({ 'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'Content-Disposition': 'attachment; filename="nakladnoy.docx"', 'Cache-Control': 'no-store' });
+    res.send(buf);
+  } catch (e) { nakladnoyErr(res, e); }
+});
 notify.mount(app, { requireAuth, staffOnly });
 // Skladda yetmasa 409 qaytaramiz; foydalanuvchi tasdiqlasa, force bilan qayta yuboriladi
 function skladError(res, e) {
@@ -890,6 +928,7 @@ function snapFilial(p, id) {
 // Xato bo'lsa .status bilan Error tashlaydi (skladError uni javobga aylantiradi).
 function addLoadCore(req, b, extra = {}) {
   const { sana, holat, kategoriyaId, nomi, matras, izoh, manzil, astatka, tel1, tel2, zborshikId, laboId, filialId, skladItems, force } = b;
+  const mijoz = String(b.mijoz || '').trim().slice(0, 100); // mijoz ismi (nakladnoy uchun, ixtiyoriy)
   const items = sklad.normalizeItems(req.paths, skladItems);
   const nomiFinal = String(nomi || '').trim() || sklad.autoNomi(items) || String(izoh || '').trim().slice(0, 60);
   if (!sana || !nomiFinal) {
@@ -907,6 +946,7 @@ function addLoadCore(req, b, extra = {}) {
     holat: HOLATLAR.includes(holat) ? holat : 'qizil',
     kategoriya: { id: cat.id, nomi: cat.name },
     nomi: nomiFinal,
+    mijoz,
     skladItems: items,
     skladCut: false,
     skladCutItems: [],
@@ -942,7 +982,7 @@ app.post('/api/loads', requireAuth, staffOnly, can('add'), actionCode, (req, res
   let newLoad;
   try {
     // Zalog faqat egasi kirita oladi (xodimniki e'tiborga olinmaydi)
-    const zalog = req.user.role === 'owner' ? makeZalog(req.body.zalogSumma, req.body.zalogIzoh, req.user.name, req.body.zalogSana) : null;
+    const zalog = req.user.role === 'owner' ? makeZalog(req.body.zalogSumma, req.body.zalogIzoh, req.user.name, req.body.zalogSana, zalogFilialOf(req, req.body)) : null;
     newLoad = addLoadCore(req, req.body, { zalog });
   } catch (e) { return skladError(res, e); }
   res.json(publicLoad(newLoad, req.user));
@@ -982,6 +1022,7 @@ app.put('/api/loads/:id', requireAuth, staffOnly, can('edit'), actionCode, (req,
     kategoriya,
     nomi: nomi !== undefined ? (String(nomi).trim() || sklad.autoNomi(itemsFinal) || String(izoh || '').trim().slice(0, 60) || loads[idx].nomi) : loads[idx].nomi,
     skladItems: itemsFinal,
+    mijoz: req.body.mijoz !== undefined ? String(req.body.mijoz || '').trim().slice(0, 100) : loads[idx].mijoz,
     matras: matrasFinal,
     izoh: izoh !== undefined ? String(izoh).trim() : loads[idx].izoh,
     manzil: manzil ?? loads[idx].manzil,
@@ -994,8 +1035,11 @@ app.put('/api/loads/:id', requireAuth, staffOnly, can('edit'), actionCode, (req,
   };
   if (req.user.role === 'owner' && req.body.zalogSumma !== undefined) {
     try {
-      const z = makeZalog(req.body.zalogSumma, req.body.zalogIzoh, req.user.name, req.body.zalogSana);
       const old = loads[idx].zalog;
+      // Filial: aniq tanlangan bo'lsa shu; aks holda eskisi saqlanadi; u ham bo'lmasa zakazning filiali
+      const explicit = req.body.zalogFilialId !== undefined;
+      const zf = explicit ? zalogFilialOf(req, req.body) : ((old && old.filial) || zalogFilialOf(req, { filialId: loads[idx].filial && loads[idx].filial.id }));
+      const z = makeZalog(req.body.zalogSumma, req.body.zalogIzoh, req.user.name, req.body.zalogSana, zf);
       if (z && old) { if (!validDay(req.body.zalogSana)) z.sana = old.sana || z.sana; z.kim = old.kim || z.kim; } // sana ko'rsatilmasa eskisi qoladi
       loads[idx].zalog = z || undefined;
       if (!z) delete loads[idx].zalog;
@@ -1201,12 +1245,13 @@ function buildPendingDraft(req, b) {
   const cat = deriveCategory(req.paths, items, b.kategoriyaId);
   const astatka = Number(b.astatka) || 0;
   if (astatka < 0 || astatka > 1e12) throw httpFail(400, "Astatka summasi noto'g'ri");
-  const zalog = makeZalog(b.zalogSumma, b.zalogIzoh);
+  const zalog = makeZalog(b.zalogSumma, b.zalogIzoh, undefined, undefined, zalogFilialOf(req, b));
   const m = b.manzil || {};
   return {
     sana,
     kategoriya: { id: cat.id, nomi: cat.name },
     nomi,
+    mijoz: cut(b.mijoz, 100),
     skladItems: items,
     matras: resolveMatras(cat.name, b.matras),
     izoh: cut(b.izoh, 300),
@@ -1217,15 +1262,16 @@ function buildPendingDraft(req, b) {
     filial: b.filialId ? snapFilial(req.paths, b.filialId) : null,
     zalogSumma: zalog ? zalog.summa : 0,
     zalogIzoh: zalog ? zalog.izoh : '',
+    zalogFilialId: zalog && zalog.filial ? zalog.filial.id : null,
   };
 }
 // Kutilayotgan zakazni addLoadCore kutadigan "forma" ko'rinishiga qaytaradi
 function pendingToBody(p) {
   return {
-    sana: p.sana, kategoriyaId: p.kategoriya && p.kategoriya.id, nomi: p.nomi, matras: p.matras, izoh: p.izoh,
+    sana: p.sana, kategoriyaId: p.kategoriya && p.kategoriya.id, nomi: p.nomi, mijoz: p.mijoz, matras: p.matras, izoh: p.izoh,
     manzil: p.manzil, astatka: p.astatka, tel1: p.tel1, tel2: p.tel2, filialId: p.filial && p.filial.id,
     skladItems: sklad.toInput(p.skladItems),
-    zalogSumma: p.zalogSumma, zalogIzoh: p.zalogIzoh, zalogSana: p.kunSana,
+    zalogSumma: p.zalogSumma, zalogIzoh: p.zalogIzoh, zalogSana: p.kunSana, zalogFilialId: p.zalogFilialId || (p.filial && p.filial.id) || null,
   };
 }
 // Sotuvchiga o'z qabul qilingan zakazi (zalog bilan) ko'rsatiladi — boshqa xodimlarning ma'lumoti emas
@@ -1324,7 +1370,7 @@ app.post('/api/pending/:id/approve', requireAuth, ownerOnly, actionCode, (req, r
   const body = { ...pendingToBody(p), ...req.body };
   let load;
   try {
-    const zalog = makeZalog(body.zalogSumma, body.zalogIzoh, undefined, body.zalogSana || p.kunSana);
+    const zalog = makeZalog(body.zalogSumma, body.zalogIzoh, undefined, body.zalogSana || p.kunSana, zalogFilialOf(req, body));
     if (zalog) { zalog.kim = p.sotuvchi.ism; } // zalog sotuvchi nomi va kiritilgan kuni bilan yoziladi
     load = addLoadCore(req, body, { sotuvchi: p.sotuvchi, zalog });
   } catch (e) { return skladError(res, e); }

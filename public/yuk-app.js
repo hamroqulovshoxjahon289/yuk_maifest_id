@@ -197,6 +197,14 @@ let editOrigNomi = ''; // tahrirlanayotgan eski zakazning nomi (yuk tanlanmagan 
 const zborshikSelect = document.getElementById('f_zborshik');
 const laboSelect = document.getElementById('f_labo');
 const filialSelect = document.getElementById('f_filial');
+const zalogFilialSelect = document.getElementById('f_zalogFilial');
+let zalogFilialTouched = false; // egasi zalog filialini qo'lda tanlagan bo'lsa, zakaz filialiga ergashmaydi
+function populateZalogFilial(selectedId) {
+  zalogFilialSelect.innerHTML = '<option value="">— zakaz filiali —</option>' + filiallar.map((f) => `<option value="${f.id}">${escapeHtml(f.nomi)}</option>`).join('');
+  zalogFilialSelect.value = filiallar.some((f) => f.id === selectedId) ? selectedId : '';
+}
+zalogFilialSelect.addEventListener('change', () => { zalogFilialTouched = true; });
+filialSelect.addEventListener('change', () => { if (!zalogFilialTouched && filiallar.some((f) => f.id === filialSelect.value)) zalogFilialSelect.value = filialSelect.value; });
 
 function fillSelect(select, items, placeholder, addLabel, valueFn, labelFn) {
   select.innerHTML = '';
@@ -232,6 +240,7 @@ function populateLabolar(select, selectedId) {
 function populateFiliallar(select, selectedId) {
   fillSelect(select, filiallar, '— tanlanmagan —', "➕ Yangi filial qo'shish", null, (f) => f.nomi);
   select.value = selectedId || '';
+  if (select === filialSelect) populateZalogFilial(zalogFilialSelect.value || (zalogFilialTouched ? '' : selectedId)); // yangi filial qo'shilsa zalog ro'yxati ham yangilanadi
 }
 
 zborshikSelect.addEventListener('change', async () => {
@@ -325,6 +334,14 @@ function renderBoard() {
     const head = document.createElement('div');
     head.className = 'day-col-head';
     head.innerHTML = `<span class="day-name">${DAY_NAMES_BY_DOW[date.getDay()]}</span><span class="day-date">${fmtShort(date)} · ${dayLoads.length}/${MAX_PER_DAY}</span>`;
+    if (dayLoads.length) {
+      const pb = document.createElement('button');
+      pb.className = 'ghost-btn small-btn nk-day-btn';
+      pb.textContent = '🖨️';
+      pb.title = `Shu kunning hamma nakladnoylarini chop etish (${dayLoads.length} ta)`;
+      pb.onclick = (ev) => { ev.stopPropagation(); printNakladnoy(dayLoads); };
+      head.appendChild(pb);
+    }
     col.appendChild(head);
 
     const addBtn = document.createElement('button');
@@ -378,7 +395,7 @@ function renderCard(l) {
   if ((l.skladItems || []).length > 3) meta.push(`+${l.skladItems.length - 3} ta`);
   if (l.zborshik) meta.push(`🧰 ${l.zborshik.ism}`);
   if (l.labo) meta.push(`🚚 ${l.labo.raqami}`);
-  if (isOwner() && l.zalog) meta.push(`💵 Zalog ${fmtMoney(l.zalog.summa)}`);
+  if (isOwner() && l.zalog) meta.push(`💵 Zalog ${fmtMoney(l.zalog.summa)}${l.zalog.filial?.nomi ? ' · ' + l.zalog.filial.nomi : ''}`);
   if (isOwner() && l.sotuvchi) meta.push(`🛍 ${l.sotuvchi.ism}`);
 
   card.innerHTML = `
@@ -441,6 +458,7 @@ function openEditModal(l) {
   document.getElementById('f_astatka').value = l.astatka || '';
   document.getElementById('f_tel1').value = l.tel1 || '';
   document.getElementById('f_tel2').value = l.tel2 || '';
+  document.getElementById('f_mijoz').value = l.mijoz || '';
   picker.setSklad(sklad);
   picker.setItems(l.skladItems || []);
   formError.textContent = '';
@@ -453,6 +471,8 @@ function openEditModal(l) {
 // Zalog maydoni faqat egasiga ko'rinadi
 function setZalogFields(z) {
   document.getElementById('zalogRow').style.display = isOwner() ? '' : 'none';
+  zalogFilialTouched = !!(z && z.filial && z.filial.id); // saqlangan zalog filiali bo'lsa — uni o'zgartirmaymiz
+  populateZalogFilial((z && z.filial && z.filial.id) || filialSelect.value || '');
   document.getElementById('f_zalog').value = z && z.summa ? z.summa : '';
   document.getElementById('f_zalogIzoh').value = z && z.izoh ? z.izoh : '';
   document.getElementById('f_zalogSana').value = (z && z.sana) || toISO(new Date()); // zalog kiritilgan kun (standart: bugun)
@@ -523,12 +543,14 @@ loadForm.addEventListener('submit', async (e) => {
     astatka: document.getElementById('f_astatka').value,
     tel1: document.getElementById('f_tel1').value.trim(),
     tel2: document.getElementById('f_tel2').value.trim(),
+    mijoz: document.getElementById('f_mijoz').value.trim(),
     skladItems: itemsToSend,
   };
   if (isOwner()) {
     base.zalogSumma = document.getElementById('f_zalog').value;
     base.zalogIzoh = document.getElementById('f_zalogIzoh').value.trim();
     base.zalogSana = document.getElementById('f_zalogSana').value; // zalog olingan kun
+    base.zalogFilialId = zalogFilialSelect.value || filialSelect.value || null; // zalogni olgan filial
   }
 
   try {
@@ -584,6 +606,7 @@ function openViewModal(l) {
     <div class="view-created">🕒 Kiritilgan: ${fmtCreated(l.createdAt)}</div>
     <div class="view-row"><span class="k">Tartib raqami</span><span class="v mono">${l.tartib || '—'}</span></div>
     <div class="view-row"><span class="k">Holat</span><span class="v"><span class="status-pill"><span class="dot ${l.holat}"></span>${HOLAT_LABEL[l.holat] || l.holat}</span></span></div>
+    ${l.mijoz ? `<div class="view-row"><span class="k">Mijoz</span><span class="v">${escapeHtml(l.mijoz)}</span></div>` : ''}
     <div class="view-row"><span class="k">Filial</span><span class="v">${escapeHtml(l.filial?.nomi || '—')}</span></div>
     <div class="view-row"><span class="k">To'lov holati</span><span class="v"><span class="status-pill"><span class="dot ${tolovHolatDot}"></span>${tolovHolatText}</span></span></div>
     <div class="view-row"><span class="k">Astatka (umumiy narx)</span><span class="v mono">${fmtMoney(l.astatka)} so'm</span></div>
@@ -598,7 +621,7 @@ function openViewModal(l) {
       : `<span class="pk-line">🛋 ${i.kategoriya ? `${escapeHtml(i.kategoriya)} · ` : ''}<b>${escapeHtml(i.model)}</b> × ${i.soni}${i.matrasId ? '' : ' <span class="sk-muted">(matrassiz)</span>'}</span>`)).join('')}${(l.skladItems || []).some((i) => i.yonalish === 'matras') ? `<span class="sk-muted">${l.skladCut ? 'Matras skladdan ayirildi ✓' : 'Yuborilganda matras skladdan ayiriladi'}</span>` : ''}</span></div>` : ''}
     ${l.izoh ? `<div class="view-row"><span class="k">📝 Tavsif</span><span class="v">${escapeHtml(l.izoh)}</span></div>` : ''}
     ${isOwner() && l.sotuvchi ? `<div class="view-row"><span class="k">🛍 Sotuvchi</span><span class="v">${escapeHtml(l.sotuvchi.ism)}</span></div>` : ''}
-    ${isOwner() && l.zalog ? `<div class="view-row"><span class="k">💵 Zalog</span><span class="v mono">${fmtMoney(l.zalog.summa)} so'm<br><span class="muted">${escapeHtml(l.zalog.sana || '')}${l.zalog.kim ? ' · ' + escapeHtml(l.zalog.kim) : ''}${l.zalog.izoh ? ' · ' + escapeHtml(l.zalog.izoh) : ''}</span></span></div>` : ''}
+    ${isOwner() && l.zalog ? `<div class="view-row"><span class="k">💵 Zalog</span><span class="v mono">${fmtMoney(l.zalog.summa)} so'm<br><span class="muted">${escapeHtml(l.zalog.sana || '')}${l.zalog.filial?.nomi ? ' · 🏬 ' + escapeHtml(l.zalog.filial.nomi) : ''}${l.zalog.kim ? ' · ' + escapeHtml(l.zalog.kim) : ''}${l.zalog.izoh ? ' · ' + escapeHtml(l.zalog.izoh) : ''}</span></span></div>` : ''}
     <div class="view-row"><span class="k">Jo'natish sanasi</span><span class="v">${l.sana}</span></div>
     <div class="view-row"><span class="k">Hudud</span><span class="v">${escapeHtml(addrLine)}</span></div>
     <div class="view-row"><span class="k">Dom / padyez / etaj</span><span class="v">${escapeHtml(domLine)}</span></div>
@@ -702,38 +725,45 @@ document.querySelectorAll('.status-quick-btn').forEach((btn) => {
   };
 });
 
-// Bitta buyurtmani chop etish (Ctrl+P) — faqat shu buyurtmaning o'zi chiqadi
-document.getElementById('printLoadBtn').onclick = () => {
-  if (!viewingLoad) return;
-  const l = viewingLoad;
-  const addrLine = [l.manzil?.hudud].filter(Boolean).join(', ') || '—';
-  const domLine = [
-    l.manzil?.dom ? `dom ${l.manzil.dom}` : '',
-    l.manzil?.padyez ? `${l.manzil.padyez}-padyez` : '',
-    l.manzil?.etaj ? `${l.manzil.etaj}-etaj` : '',
-  ].filter(Boolean).join(' · ') || '—';
-  const title = loadTitle(l);
-
-  document.getElementById('printArea').innerHTML = `
-    <h1>${escapeHtml(title || 'Yuk')}</h1>
-    <table class="print-table">
-      <tr><td>Holat</td><td>${HOLAT_LABEL[l.holat] || l.holat}</td></tr>
-      <tr><td>Kategoriya</td><td>${escapeHtml(l.kategoriya?.nomi || '—')}</td></tr>
-      ${l.matras?.bor ? `<tr><td>Matras</td><td>${escapeHtml(l.matras.turi)}</td></tr>` : ''}
-      ${(l.skladItems || []).length ? `<tr><td>Mahsulotlar</td><td>${l.skladItems.map((i) => `${i.yonalish === 'matras' ? '' : `${escapeHtml(i.kategoriya)} — `}${escapeHtml(i.model)} × ${i.soni}`).join('<br>')}</td></tr>` : ''}
-      ${l.izoh ? `<tr><td>Tavsif</td><td>${escapeHtml(l.izoh)}</td></tr>` : ''}
-      <tr><td>Jo'natish sanasi</td><td>${l.sana}</td></tr>
-      <tr><td>Hudud</td><td>${escapeHtml(addrLine)}</td></tr>
-      <tr><td>Dom / padyez / etaj</td><td>${escapeHtml(domLine)}</td></tr>
-      <tr><td>Astatka (qoldiq)</td><td>${fmtMoney(l.astatka)} so'm</td></tr>
-      <tr><td>1-telefon</td><td>${escapeHtml(l.tel1 || '—')}</td></tr>
-      <tr><td>2-telefon</td><td>${escapeHtml(l.tel2 || '—')}</td></tr>
-      ${l.zborshik ? `<tr><td>Zborshik</td><td>${escapeHtml(l.zborshik.ism)} — ${escapeHtml(l.zborshik.telefon || '')}</td></tr>` : ''}
-      ${l.labo ? `<tr><td>Labo</td><td>${escapeHtml(l.labo.raqami)} (${escapeHtml(l.labo.haydovchi)}) — ${escapeHtml(l.labo.telefon || '')}</td></tr>` : ''}
-    </table>
-  `;
-  window.print();
-};
+// ---------------- NAKLADNOY: chap tomon zakaz ma'lumoti bilan to'ldiriladi, o'ng tomonda modellarning yuk jadvallari (Word shablondan) ----------------
+// 1 mijoz = 1 nakladnoy; zakazda bir nechta model bo'lsa, o'ng tomonda hammasining yuklari. Tugma bosilganda bevosita chop etish oynasi ochiladi.
+async function printNakladnoy(list) {
+  list = (list || []).filter(Boolean);
+  if (!list.length) { showToast("Nakladnoy uchun zakaz yo'q", true); return; }
+  try {
+    showToast('Nakladnoy tayyorlanmoqda…');
+    const res = await fetch('/api/nakladnoy/html', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: list.map((l) => l.id) }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Nakladnoy tayyorlanmadi');
+    const p = data.page;
+    let st = document.getElementById('nkPageStyle');
+    if (!st) { st = document.createElement('style'); st.id = 'nkPageStyle'; document.head.appendChild(st); }
+    st.textContent = `@media print { @page { size: ${p.w}mm ${p.h}mm; margin: ${p.mt}mm ${p.mr}mm ${p.mb}mm ${p.ml}mm; } }`;
+    document.getElementById('printArea').innerHTML = data.html;
+    document.body.classList.add('nk-printing');
+    const done = () => { document.body.classList.remove('nk-printing'); document.getElementById('printArea').innerHTML = ''; st.textContent = ''; };
+    window.addEventListener('afterprint', done, { once: true });
+    window.print();
+    setTimeout(() => { if (document.body.classList.contains('nk-printing') && !document.hidden) done(); }, 120000);
+  } catch (err) { showToast(err.message, true); }
+}
+// Word fayl sifatida yuklab olish (kerak bo'lsa Wordda tahrirlash uchun)
+async function downloadNakladnoyWord(list) {
+  list = (list || []).filter(Boolean);
+  if (!list.length) return;
+  try {
+    const res = await fetch('/api/nakladnoy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: list.map((l) => l.id) }) });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'Nakladnoy tayyorlanmadi'); }
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = list.length === 1 ? `nakladnoy-${(list[0].mijoz || list[0].nomi || 'zakaz').replace(/[^\w\u0400-\u04FF-]+/g, '_').slice(0, 30)}-${list[0].sana}.docx` : `nakladnoy-${list[0].sana}-${list.length}ta.docx`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  } catch (err) { showToast(err.message, true); }
+}
+document.getElementById('printLoadBtn').onclick = () => { if (viewingLoad) printNakladnoy([viewingLoad]); };
+document.getElementById('wordLoadBtn').onclick = () => { if (viewingLoad) downloadNakladnoyWord([viewingLoad]); };
 
 document.getElementById('editLoadBtn').onclick = () => { if (viewingLoad) openEditModal(viewingLoad); };
 
@@ -1303,7 +1333,7 @@ function skModelRow(x, m) {
   }
   const thumb = x.rasm ? `<img class="sk-thumb" src="/api/sklad/models/${x.id}/rasm?v=${x.rasm.v}" alt="" data-view="${x.id}" loading="lazy" />` : '';
   const btns = m
-    ? `<button class="ghost-btn small-btn" data-sk="cfgmat" data-id="${x.id}" title="Matras ketadimi, qaysi matras">🛏 Matras</button><button class="ghost-btn small-btn" data-sk="photo" data-id="${x.id}">📷 ${x.rasm ? 'Almashtirish' : 'Surat'}</button>${x.rasm ? `<button class="ghost-btn small-btn" data-sk="delphoto" data-id="${x.id}" title="Suratni olib tashlash">✕ Surat</button>` : ''}<button class="ghost-btn small-btn" data-sk="renmodel" data-id="${x.id}" title="Nomini o'zgartirish">Aa</button><button class="danger-btn small-btn" data-sk="delmodel" data-id="${x.id}" title="O'chirish">🗑</button>`
+    ? `<button class="ghost-btn small-btn" data-sk="cfgmat" data-id="${x.id}" title="Matras ketadimi, qaysi matras">🛏 Matras</button><button class="ghost-btn small-btn" data-sk="word" data-id="${x.id}" title="Nakladnoy Word fayli (.docx): chap tomonni sayt to'ldiradi, o'ng tomondagi yuklar o'zgarmaydi">📄 ${x.word ? 'Word ✓' : 'Word'}</button>${x.word ? `<button class="ghost-btn small-btn" data-sk="dlword" data-id="${x.id}" title="${escapeHtml(x.word.nomi)} — yuklab olish">⬇</button><button class="danger-btn small-btn" data-sk="delword" data-id="${x.id}" title="Word faylni olib tashlash">✕</button>` : ''}<button class="ghost-btn small-btn" data-sk="photo" data-id="${x.id}">📷 ${x.rasm ? 'Almashtirish' : 'Surat'}</button>${x.rasm ? `<button class="ghost-btn small-btn" data-sk="delphoto" data-id="${x.id}" title="Suratni olib tashlash">✕ Surat</button>` : ''}<button class="ghost-btn small-btn" data-sk="renmodel" data-id="${x.id}" title="Nomini o'zgartirish">Aa</button><button class="danger-btn small-btn" data-sk="delmodel" data-id="${x.id}" title="O'chirish">🗑</button>`
     : '';
   return `<div class="sk-model">${thumb}<span class="sk-mname">${escapeHtml(x.nomi)}<br>${matrasBadge(x)}</span>${btns}</div>`;
 }
@@ -1443,6 +1473,16 @@ document.getElementById('skBody').addEventListener('click', async (e) => {
       photoModelId = id;
       skFile.click();
       return;
+    } else if (act === 'word') {
+      wordModelId = id;
+      skWordFile.click();
+      return;
+    } else if (act === 'dlword') {
+      window.open(`/api/sklad/models/${id}/word/file`, '_blank');
+      return;
+    } else if (act === 'delword') {
+      if (!confirm(`"${model.nomi}" Word faylini olib tashlaysizmi?`)) return;
+      await apiJson(`/api/sklad/models/${id}/word`, 'DELETE');
     } else if (act === 'delphoto') {
       if (!confirm(`"${model.nomi}" suratini olib tashlaysizmi?`)) return;
       await apiJson(`/api/sklad/models/${id}/rasm`, 'DELETE');
@@ -1501,6 +1541,23 @@ function resizeImage(file, maxSide = 1280, quality = 0.82) {
     img.src = url;
   });
 }
+let wordModelId = null;
+const skWordFile = document.getElementById('skWordFile');
+skWordFile.addEventListener('change', async () => {
+  const f = skWordFile.files[0];
+  skWordFile.value = '';
+  if (!f || !wordModelId) return;
+  if (!/\.docx$/i.test(f.name)) { showToast("Faqat .docx (Word) fayl tanlang. Eski .doc bo'lsa, Word'da «Saqlash → .docx» qiling", true); return; }
+  try {
+    showToast('Word yuklanmoqda…');
+    const res = await fetch(`/api/sklad/models/${wordModelId}/word`, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream', 'X-File-Name': encodeURIComponent(f.name) }, body: f });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Word yuklanmadi');
+    await fetchSklad();
+    renderSkladModal();
+    showToast(data.word && data.word.chap === false ? "Word saqlandi, lekin chap tomon (накладной: «ТЕЛ ОФИСА» qatori) topilmadi — mijoz ma'lumotlari to'ldirilmaydi" : 'Word saqlandi ✓', data.word && data.word.chap === false);
+  } catch (err) { showToast(err.message, true); }
+});
 skFile.addEventListener('change', async () => {
   const f = skFile.files[0];
   skFile.value = '';
@@ -1941,7 +1998,7 @@ document.getElementById('pvEditBtn').onclick = () => {
   const pseudo = {
     kategoriya: p.kategoriya, nomi: p.nomi, matras: p.matras, izoh: p.izoh, sana: p.sana, holat: 'qizil',
     manzil: p.manzil, astatka: p.astatka, tel1: p.tel1, tel2: p.tel2, filial: p.filial, zborshik: null, labo: null,
-    skladItems: p.skladItems, zalog: p.zalogSumma ? { summa: p.zalogSumma, izoh: p.zalogIzoh, sana: p.kunSana } : null,
+    mijoz: p.mijoz, skladItems: p.skladItems, zalog: p.zalogSumma ? { summa: p.zalogSumma, izoh: p.zalogIzoh, sana: p.kunSana, filial: p.zalogFilialId ? { id: p.zalogFilialId } : (p.filial || null) } : null,
   };
   openEditModal(pseudo);               // formani to'ldiradi (va boshqa oynalarni yopadi)
   editingId = null;
@@ -2054,52 +2111,70 @@ function renderMatrasWeek() {
 // ============================================================
 //  HISOBOT: ZALOG (faqat egasi) — sotuvchilar kesimida
 // ============================================================
-function zalogData(from, to) {
-  const list = loads.filter((l) => l.zalog && l.zalog.summa && (l.zalog.sana || l.sana) >= from && (l.zalog.sana || l.sana) <= to)
+const zalogFilialName = (l) => l.zalog?.filial?.nomi || l.filial?.nomi || '— filial belgilanmagan —';
+function zalogData(from, to, filialId) {
+  const list = loads.filter((l) => l.zalog && l.zalog.summa && (l.zalog.sana || l.sana) >= from && (l.zalog.sana || l.sana) <= to
+      && (!filialId || (l.zalog.filial?.id || l.filial?.id) === filialId))
     .sort((a, b) => String(a.zalog.sana || a.sana).localeCompare(String(b.zalog.sana || b.sana)));
   const bySeller = new Map();
+  const byFilial = new Map();
   list.forEach((l) => {
     const name = l.sotuvchi?.ism || l.zalog.kim || 'Egasi';
     if (!bySeller.has(name)) bySeller.set(name, { name, soni: 0, jami: 0 });
     const r = bySeller.get(name); r.soni += 1; r.jami += Number(l.zalog.summa) || 0;
+    const fn = zalogFilialName(l);
+    if (!byFilial.has(fn)) byFilial.set(fn, { name: fn, soni: 0, jami: 0 });
+    const q = byFilial.get(fn); q.soni += 1; q.jami += Number(l.zalog.summa) || 0;
   });
-  const jami = list.reduce((s, l) => s + (Number(l.zalog.summa) || 0), 0);
-  return { list, sellers: [...bySeller.values()].sort((a, b) => b.jami - a.jami), jami };
+  const jami = list.reduce((sum, l) => sum + (Number(l.zalog.summa) || 0), 0);
+  return { list, sellers: [...bySeller.values()].sort((a, b) => b.jami - a.jami), filiallar: [...byFilial.values()].sort((a, b) => b.jami - a.jami), jami };
 }
 function zalogTables(d, forPrint) {
   const cls = forPrint ? 'print-table' : 'report-table';
-  const sellerRows = d.sellers.map((s) => `<tr><td><b>${escapeHtml(s.name)}</b></td><td class="mono">${s.soni}</td><td class="mono">${fmtMoney(s.jami)}</td></tr>`).join('');
-  const rows = d.list.map((l) => `<tr><td>${escapeHtml(l.zalog.sana || '')}</td><td>${escapeHtml(l.sotuvchi?.ism || l.zalog.kim || 'Egasi')}</td><td>${escapeHtml(l.nomi || '—')}${l.filial?.nomi ? `<br><span class="muted">${escapeHtml(l.filial.nomi)}</span>` : ''}</td><td>${escapeHtml(l.sana)}</td><td class="mono">${fmtMoney(l.zalog.summa)}</td><td>${escapeHtml(l.zalog.izoh || '')}</td></tr>`).join('');
+  const sumRows = (arr) => arr.map((r) => `<tr><td><b>${escapeHtml(r.name)}</b></td><td class="mono">${r.soni}</td><td class="mono">${fmtMoney(r.jami)}</td></tr>`).join('');
+  const foot = (arr) => (arr.length ? `<tfoot><tr><td><b>Jami</b></td><td></td><td class="mono"><b>${fmtMoney(d.jami)}</b></td></tr></tfoot>` : '');
+  const rows = d.list.map((l) => `<tr><td>${escapeHtml(l.zalog.sana || '')}</td><td><b>${escapeHtml(zalogFilialName(l))}</b></td><td>${escapeHtml(l.sotuvchi?.ism || l.zalog.kim || 'Egasi')}</td><td>${escapeHtml(l.mijoz || l.nomi || '—')}</td><td>${escapeHtml(l.sana)}</td><td class="mono">${fmtMoney(l.zalog.summa)}</td><td>${escapeHtml(l.zalog.izoh || '')}</td></tr>`).join('');
   return `
-    <table class="${cls}"><thead><tr><th>Sotuvchi</th><th>Zakazlar</th><th>Zalog yig'indisi</th></tr></thead>
-      <tbody>${sellerRows || '<tr><td colspan="3">Bu davrda zalog yo\'q</td></tr>'}</tbody>
-      ${d.sellers.length ? `<tfoot><tr><td><b>Jami</b></td><td></td><td class="mono"><b>${fmtMoney(d.jami)}</b></td></tr></tfoot>` : ''}
+    <h4 style="margin:6px 0">🏬 Filiallar bo'yicha (qaysi filial zalog oldi)</h4>
+    <table class="${cls}"><thead><tr><th>Filial</th><th>Zakazlar</th><th>Zalog yig'indisi</th></tr></thead>
+      <tbody>${sumRows(d.filiallar) || '<tr><td colspan="3">Bu davrda zalog yo\'q</td></tr>'}</tbody>${foot(d.filiallar)}
     </table>
-    ${d.list.length ? `<h4 style="margin:16px 0 6px">Zalog yozuvlari</h4><div class="${forPrint ? '' : 'report-scroll'}"><table class="${cls}"><thead><tr><th>Zalog sanasi</th><th>Sotuvchi</th><th>Zakaz</th><th>Jo'natish</th><th>Summa</th><th>Izoh</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}`;
+    <h4 style="margin:16px 0 6px">🛍 Sotuvchilar bo'yicha</h4>
+    <table class="${cls}"><thead><tr><th>Sotuvchi</th><th>Zakazlar</th><th>Zalog yig'indisi</th></tr></thead>
+      <tbody>${sumRows(d.sellers) || '<tr><td colspan="3">Bu davrda zalog yo\'q</td></tr>'}</tbody>${foot(d.sellers)}
+    </table>
+    ${d.list.length ? `<h4 style="margin:16px 0 6px">Zalog yozuvlari</h4><div class="${forPrint ? '' : 'report-scroll'}"><table class="${cls}"><thead><tr><th>Zalog sanasi</th><th>Zalog olgan filial</th><th>Sotuvchi</th><th>Mijoz / zakaz</th><th>Jo'natish</th><th>Summa</th><th>Izoh</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}`;
 }
 function renderZalogReport() {
   const box = document.getElementById('zalogReport');
   if (!box || !isOwner()) return;
   const from = document.getElementById('zalFrom')?.value || toISO(addDays(new Date(), -29));
   const to = document.getElementById('zalTo')?.value || toISO(new Date());
-  const d = zalogData(from, to);
+  const fil = document.getElementById('zalFilial')?.value || '';
+  const d = zalogData(from, to, fil);
+  const filName = fil ? (filiallar.find((f) => f.id === fil)?.nomi || '') : 'Hamma filiallar';
   box.innerHTML = `
     <div class="report-print-head">
-      <h3 class="report-subhead" style="margin:0;">💵 Zalog hisoboti (sotuvchilar)</h3>
+      <h3 class="report-subhead" style="margin:0;">💵 Zalog hisoboti (filial va sotuvchilar)</h3>
       <button class="ghost-btn small-btn" id="zalPrintBtn">🖨️ Chop etish</button>
     </div>
     <div class="quick-assign-row" style="margin:8px 0">
+      <label>🏬 Filial
+        <select id="zalFilial"><option value="">Hamma filiallar</option>${filiallar.map((f) => `<option value="${f.id}" ${f.id === fil ? 'selected' : ''}>${escapeHtml(f.nomi)}</option>`).join('')}</select>
+      </label>
       <label>Qaysi sanadan<input type="date" id="zalFrom" value="${from}" /></label>
       <label>Qaysi sanagacha<input type="date" id="zalTo" value="${to}" /></label>
     </div>
     <div class="report-scroll">${zalogTables(d, false)}</div>
-    <p class="report-note">Zalog zakazning jo'natish kuniga emas, balki zalog kiritilgan (olingan) kunga yoziladi. Zalog olinmagan zakazlar bu hisobotda ko'rinmaydi. Bu ma'lumotni xodimlar, zborshik va shafyorlar ko'rmaydi. Excel faylda ham «Zalog» varag'i bor.</p>`;
+    <p class="report-note">Zalog zakazning jo'natish kuniga emas, balki zalog kiritilgan (olingan) kunga yoziladi. «Zalogni qaysi filial oldi» zakaz formasida tanlanadi (standart — zakaz filiali). Zalog olinmagan zakazlar bu hisobotda ko'rinmaydi. Bu ma'lumotni xodimlar, zborshik va shafyorlar ko'rmaydi. Excel faylda ham «Zalog» varag'i bor.</p>`;
   document.getElementById('zalFrom').onchange = renderZalogReport;
   document.getElementById('zalTo').onchange = renderZalogReport;
+  document.getElementById('zalFilial').onchange = renderZalogReport;
   document.getElementById('zalPrintBtn').onclick = () => {
     const f = document.getElementById('zalFrom').value; const t = document.getElementById('zalTo').value;
-    const dd = zalogData(f, t);
-    document.getElementById('printArea').innerHTML = `<h1>💵 Zalog hisoboti</h1><p><b>${escapeHtml(f)} — ${escapeHtml(t)}</b></p>${zalogTables(dd, true)}`;
+    const fl = document.getElementById('zalFilial').value;
+    const dd = zalogData(f, t, fl);
+    document.getElementById('printArea').innerHTML = `<h1>💵 Zalog hisoboti</h1><p><b>${escapeHtml(f)} — ${escapeHtml(t)} · ${escapeHtml(filName)}</b></p>${zalogTables(dd, true)}`;
     window.print();
   };
 }

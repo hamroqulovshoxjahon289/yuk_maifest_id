@@ -1,0 +1,27 @@
+{
+  "categories": [
+    {
+      "id": "b9efa072-63b8-4853-9a86-ccbfa3240745",
+      "yonalish": "mebel",
+      "nomi": "sp"
+    }
+  ],
+  "models": [
+    {
+      "id": "91b96f6b-e165-47c2-b9a5-31139b209348",
+      "categoryId": "b9efa072-63b8-4853-9a86-ccbfa3240745",
+      "nomi": "miss",
+      "qoldiq": 0,
+      "createdAt": "2026-11-24T03:01:12.862Z",
+      "matrasKetadi": false,
+      "matrasIds": [],
+      "word": {
+        "nomi": "МИСС.docx",
+        "v": 1795489284692,
+        "size": 18315,
+        "chap": true
+      }
+    }
+  ],
+  "harakat": []
+}
